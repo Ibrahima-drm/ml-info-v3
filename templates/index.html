@@ -762,11 +762,19 @@ function urlBase64ToUint8Array(b64) {
                     applicationServerKey: urlBase64ToUint8Array(key),
                 });
                 const j = sub.toJSON();
-                await fetch('/api/push/subscribe', {
+                const subResp = await fetch('/api/push/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys }),
                 });
+                if (!subResp.ok) {
+                    const txt = await subResp.text().catch(() => '');
+                    console.error('subscribe POST failed', subResp.status, txt, 'payload was:', j);
+                    await sub.unsubscribe().catch(() => {});
+                    sub = null;
+                    toast('Erreur backend: HTTP ' + subResp.status);
+                    return;
+                }
                 updateUI(true);
                 toast('Notifications activées');
             } else {
