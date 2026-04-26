@@ -484,6 +484,8 @@ def health():
         "claude_enabled": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "anthropic_sdk_installed": anthropic_sdk,
         "claude_last_call": summarizer.LAST_CLAUDE_STATUS,
+        "push_subscriptions": len(push.STORE.list_subscriptions()),
+        "push_vapid_configured": bool(os.environ.get("VAPID_PRIVATE_KEY")),
     })
 
 def _require_admin_token():
@@ -537,6 +539,23 @@ def push_unsubscribe():
         return jsonify({"error": "endpoint required"}), 400
     push.STORE.remove_subscription(endpoint)
     return "", 204
+
+
+@app.route("/admin/push/test", methods=["POST", "GET"])
+def admin_push_test():
+    """Envoie une notification de test à toutes les subscriptions enregistrées.
+    Bypasse les filtres de score/dedup. Protégé par ADMIN_TOKEN."""
+    auth_err = _require_admin_token()
+    if auth_err is not None:
+        return auth_err
+    payload = {
+        "title": "🇲🇱 ML Info — test",
+        "body": "Si tu vois ça, les push notifications marchent.",
+        "url": "/",
+    }
+    n_sent, n_dead = push.send_push_to_all(payload)
+    return jsonify({"sent": n_sent, "dead_removed": n_dead,
+                    "total_subs": len(push.STORE.list_subscriptions())})
 
 
 @app.route("/admin/clear-summaries")
