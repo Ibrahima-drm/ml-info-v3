@@ -91,7 +91,52 @@ _boilerplate_patterns = [
     re.compile(r"©|tous droits réservés", re.I),
     re.compile(r"^crédit\s+(photo|image)", re.I),
     re.compile(r"^\W*$"),  # vide ou ponctuation
+    # Bannières de cookies / consentement RGPD
+    re.compile(r"accepter\s+(les\s+)?cookies?", re.I),
+    re.compile(r"refuser\s+(les\s+)?cookies?", re.I),
+    re.compile(r"gérer\s+(mes\s+|vos\s+)?(cookies|préférences|consentement)", re.I),
+    re.compile(r"\bconsentement\b", re.I),
+    re.compile(r"politique\s+de\s+(cookies|confidentialité)", re.I),
+    re.compile(r"\bdonnées\s+personnelles\b.*\b(cookies?|partenaires?)\b", re.I),
+    # Placeholders pour contenus tiers (YouTube, Twitter, Instagram…)
+    re.compile(r"pour\s+afficher\s+ce\s+contenu", re.I),
+    re.compile(r"required\s+part\s+of\s+this\s+site", re.I),
+    re.compile(r"this\s+content\s+is\s+(currently\s+)?(unavailable|hosted)", re.I),
+    re.compile(r"please\s+(enable|allow|accept|disable)", re.I),
+    # Paywalls
+    re.compile(r"réservé\s+aux\s+abonnés", re.I),
+    re.compile(r"déjà\s+abonné", re.I),
+    re.compile(r"poursuivez\s+votre\s+lecture", re.I),
+    re.compile(r"créez\s+(un\s+|votre\s+)?compte", re.I),
+    # Anti-adblock
+    re.compile(r"désactivez?\s+votre\s+(bloqueur|adblock)", re.I),
+    re.compile(r"javascript.*(désactivé|disabled|enabled|required)", re.I),
+    # Réseaux sociaux (boutons partage qui finissent dans le texte)
+    re.compile(r"^(partager|tweeter|facebook|whatsapp|linkedin)\b", re.I),
 ]
+
+# Détection plus globale : si le texte ENTIER ressemble à un mur de
+# consentement/paywall, on le rejette (return "" → fallback RSS).
+_consent_signals = re.compile(
+    r"(accepter\s+(les\s+)?cookies?|consentement|réservé\s+aux\s+abonnés|"
+    r"pour\s+afficher\s+ce\s+contenu|required\s+part\s+of\s+this\s+site|"
+    r"désactivez?\s+votre\s+(bloqueur|adblock)|javascript)",
+    re.I,
+)
+
+def _looks_like_consent_wall(text: str) -> bool:
+    """True si le texte est trop court ou dominé par du consentement/paywall."""
+    if not text:
+        return True
+    if len(text) < 200:
+        # Trop court pour être un vrai article ; et si en plus on y voit un
+        # signal de consentement, c'est foutu.
+        return bool(_consent_signals.search(text))
+    # Texte plus long : on rejette si > 25% des phrases sont du consentement
+    matches = len(_consent_signals.findall(text))
+    if matches >= 3:
+        return True
+    return False
 
 def _is_boilerplate(sentence: str) -> bool:
     s = sentence.strip()
@@ -123,6 +168,9 @@ def _extract_main_text(url: str) -> Optional[str]:
             favor_precision=True,
             deduplicate=True,
         )
+        if text and _looks_like_consent_wall(text):
+            log.info("Mur de consentement/paywall détecté pour %s", url)
+            return None
         return text
     except Exception as e:
         log.warning("Échec d'extraction pour %s : %s", url, e)
@@ -156,7 +204,11 @@ def extractive_summary(text: str, max_words: int = 150) -> str:
         if word_count >= max_words:
             break
 
-    return " ".join(kept).strip()
+    result = " ".join(kept).strip()
+    # Trop court pour être un vrai résumé ? On rend la main au fallback.
+    if len(result.split()) < 25:
+        return ""
+    return result
 
 # ----------------------------------------------------------------------
 # Résumé via Claude (mode optionnel)
