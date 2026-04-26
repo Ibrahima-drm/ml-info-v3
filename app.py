@@ -454,13 +454,30 @@ def api_summary():
 
 @app.route("/health")
 def health():
+    # Vérifie si le SDK anthropic est installé (au-delà de la simple présence de la clé)
+    try:
+        import anthropic  # noqa: F401
+        anthropic_sdk = True
+    except ImportError:
+        anthropic_sdk = False
+
     return jsonify({
         "status": "ok",
         "cached_articles": len(CACHE["data"]),
         "cached_summaries": len(summarizer.CACHE),
         "cache_age_s": int(time.time() - CACHE["timestamp"]),
         "claude_enabled": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "anthropic_sdk_installed": anthropic_sdk,
+        "claude_last_call": summarizer.LAST_CLAUDE_STATUS,
     })
+
+@app.route("/admin/clear-summaries")
+def clear_summaries():
+    """Vide le cache LRU des résumés. Pour repartir propre après un patch
+    qui change la qualité d'extraction (paywalls, anti-adblock, etc.)."""
+    n = len(summarizer.CACHE)
+    summarizer.CACHE._d.clear()
+    return jsonify({"cleared": n})
 
 # Service worker servi à la racine pour intercepter tout le scope.
 @app.route("/sw.js")

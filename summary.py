@@ -53,6 +53,9 @@ class LRUCache:
 
 CACHE = LRUCache(capacity=500)
 
+# Diagnostic Claude : on retient le dernier statut/erreur pour /health
+LAST_CLAUDE_STATUS: dict = {"called": False, "ok": False, "error": None}
+
 # Verrous par URL pour éviter de générer le même résumé deux fois
 # en parallèle (évite des fetchs HTTP doublonnés).
 _url_locks: dict[str, threading.Lock] = {}
@@ -111,6 +114,11 @@ _boilerplate_patterns = [
     # Anti-adblock
     re.compile(r"désactivez?\s+votre\s+(bloqueur|adblock)", re.I),
     re.compile(r"javascript.*(désactivé|disabled|enabled|required)", re.I),
+    re.compile(r"une\s+extension\s+de\s+votre\s+navigateur", re.I),
+    re.compile(r"extension.*\bbloque(r|nt|)\b", re.I),
+    re.compile(r"merci\s+de\s+(la\s+)?désactiver", re.I),
+    re.compile(r"semble\s+bloquer", re.I),
+    re.compile(r"bloqueur\s+de\s+publicit", re.I),
     # Réseaux sociaux (boutons partage qui finissent dans le texte)
     re.compile(r"^(partager|tweeter|facebook|whatsapp|linkedin)\b", re.I),
 ]
@@ -120,7 +128,9 @@ _boilerplate_patterns = [
 _consent_signals = re.compile(
     r"(accepter\s+(les\s+)?cookies?|consentement|réservé\s+aux\s+abonnés|"
     r"pour\s+afficher\s+ce\s+contenu|required\s+part\s+of\s+this\s+site|"
-    r"désactivez?\s+votre\s+(bloqueur|adblock)|javascript)",
+    r"désactivez?\s+votre\s+(bloqueur|adblock)|javascript|"
+    r"une\s+extension\s+de\s+votre\s+navigateur|semble\s+bloquer|"
+    r"bloqueur\s+de\s+publicit)",
     re.I,
 )
 
@@ -222,7 +232,9 @@ def _claude_summary(title: str, text: str, source: str) -> Optional[str]:
 
     try:
         import anthropic
-    except ImportError:
+    except ImportError as e:
+        LAST_CLAUDE_STATUS.update({"called": True, "ok": False,
+                                   "error": f"import anthropic: {e}"})
         log.warning("Module anthropic non installé, fallback extractif.")
         return None
 
@@ -232,6 +244,7 @@ def _claude_summary(title: str, text: str, source: str) -> Optional[str]:
     # Tronque le texte pour éviter de payer trop de tokens
     text_trim = text[:4000]
 
+    LAST_CLAUDE_STATUS["called"] = True
     try:
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
@@ -257,8 +270,11 @@ def _claude_summary(title: str, text: str, source: str) -> Optional[str]:
         )
         # Concatène les blocs de texte retournés
         parts = [b.text for b in msg.content if getattr(b, "type", None) == "text"]
-        return " ".join(parts).strip() or None
+        result = " ".join(parts).strip() or None
+        LAST_CLAUDE_STATUS.update({"ok": True, "error": None})
+        return result
     except Exception as e:
+        LAST_CLAUDE_STATUS.update({"ok": False, "error": f"{type(e).__name__}: {e}"})
         log.warning("Échec Claude pour résumé : %s", e)
         return None
 
