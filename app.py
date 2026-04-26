@@ -80,13 +80,24 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("coton", 2), ("agriculture", 1),
         ("électricité", 2), ("edm", 3), ("carburant", 3),
     ],
-    "geographie": [
-        ("mali", 5), ("bamako", 5), ("kidal", 5), ("gao", 5),
+    "regions": [
+        ("mali", 5), ("malien", 4), ("malienne", 4),
+        ("bamako", 5), ("kidal", 5), ("gao", 5),
         ("tombouctou", 5), ("mopti", 5), ("ségou", 4), ("sikasso", 4),
         ("kayes", 4), ("koulikoro", 3), ("taoudéni", 4), ("ménaka", 5),
-        ("azawad", 5), ("liptako", 4), ("gourma", 3),
-        ("sahel", 3), ("burkina faso", 2), ("niger", 1),
+        ("azawad", 5),
     ],
+}
+
+# Termes "ancres" : un article est gardé UNIQUEMENT si au moins un de
+# ces termes apparaît. Ça garantit que l'article parle bien du Mali et
+# pas seulement du Sahel ou d'un pays voisin.
+MALI_ANCHORS: set[str] = {
+    "mali", "malien", "malienne", "maliens", "maliennes",
+    "bamako", "kidal", "gao", "tombouctou", "mopti", "segou",
+    "sikasso", "kayes", "koulikoro", "taoudeni", "menaka",
+    "azawad", "fama", "forces armees maliennes",
+    "goita", "assimi goita", "edm", "energie du mali",
 }
 
 CACHE: dict = {"data": [], "timestamp": 0.0}
@@ -148,9 +159,14 @@ def score_article(title: str, desc: str) -> tuple[int, str]:
     if not text:
         return 0, ""
 
-    cat_scores: dict[str, int] = {}
-    has_anchor = False
+    has_mali_anchor = any(
+        re.search(r"\b" + re.escape(normalize(a)) + r"\b", text)
+        for a in MALI_ANCHORS
+    )
+    if not has_mali_anchor:
+        return 0, ""
 
+    cat_scores: dict[str, int] = {}
     for cat, kws in KEYWORDS.items():
         s = 0
         for kw, weight in kws:
@@ -159,16 +175,14 @@ def score_article(title: str, desc: str) -> tuple[int, str]:
             occurrences = len(re.findall(pattern, text))
             if occurrences:
                 s += weight * occurrences
-                if cat in ("geographie", "securite"):
-                    has_anchor = True
         if s:
             cat_scores[cat] = s
 
-    if not has_anchor:
+    if not cat_scores:
         return 0, ""
 
     total = sum(cat_scores.values())
-    priority = ["securite", "politique", "economie", "geographie"]
+    priority = ["securite", "politique", "economie", "regions"]
     cat = max(cat_scores, key=lambda c: (cat_scores[c], -priority.index(c)))
     return total, cat
 
