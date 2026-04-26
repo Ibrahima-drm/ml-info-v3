@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
@@ -104,11 +105,16 @@ CACHE: dict = {"data": [], "timestamp": 0.0}
 CACHE_DURATION = 180
 MAX_AGE_DAYS = 7
 MAX_ARTICLES = 80
-REQUEST_TIMEOUT = 10
+REQUEST_TIMEOUT = 4
 USER_AGENT = "ML_INFO/3.0"
 
 PREFETCH_TOP = 4
 PREFETCH_WORKERS = 2
+
+# Verrou pour éviter qu'un refresh forcé soit lancé plusieurs fois
+# en parallèle (déclencheur stale-while-revalidate)
+_refresh_lock = threading.Lock()
+_refreshing = {"flag": False}
 
 # ----------------------------------------------------------------------
 # Modèle
@@ -290,11 +296,9 @@ def _prefetch_summaries(articles: list[Article]) -> None:
 # Cœur : récupération
 # ----------------------------------------------------------------------
 
-def fetch_all(force: bool = False) -> list[Article]:
+def _do_fetch() -> list[Article]:
+    """Effectue le fetch parallèle, met à jour le cache, déclenche la précharge."""
     global CACHE
-
-    if not force and (time.time() - CACHE["timestamp"] < CACHE_DURATION):
-        return CACHE["data"]
 
     log.info("Récupération de %d flux en parallèle...", len(SOURCES))
     t0 = time.time()
@@ -323,6 +327,51 @@ def fetch_all(force: bool = False) -> list[Article]:
 
     _prefetch_summaries(all_articles)
     return all_articles
+
+def _trigger_background_refresh() -> bool:
+    """Lance un refresh en tâche de fond si aucun n'est déjà en cours.
+    Retourne True si un refresh a été déclenché."""
+    with _refresh_lock:
+        if _refreshing["flag"]:
+            return False
+        _refreshing["flag"] = True
+
+    def task():
+        try:
+            _do_fetch()
+        except Exception as e:
+            log.warning("Background refresh KO : %s", e)
+        finally:
+            with _refresh_lock:
+                _refreshing["flag"] = False
+
+    try:
+        _prefetch_pool.submit(task)
+        return True
+    except RuntimeError:
+        with _refresh_lock:
+            _refreshing["flag"] = False
+        return False
+
+def fetch_all(force: bool = False) -> list[Article]:
+    """Renvoie les articles en cache (ou les récupère si vide).
+
+    - `force=False` : cache valide < CACHE_DURATION → renvoyé direct ; sinon fetch synchrone.
+    - `force=True`  : stale-while-revalidate. Si on a déjà des articles en cache,
+      on les renvoie immédiatement et on déclenche un refresh en arrière-plan.
+      Si le cache est totalement vide, on fait un fetch synchrone (1re visite).
+    """
+    cache_age = time.time() - CACHE["timestamp"]
+    has_cache = bool(CACHE["data"])
+
+    if force and has_cache:
+        _trigger_background_refresh()
+        return CACHE["data"]
+
+    if not force and cache_age < CACHE_DURATION and has_cache:
+        return CACHE["data"]
+
+    return _do_fetch()
 
 # ----------------------------------------------------------------------
 # Routes
