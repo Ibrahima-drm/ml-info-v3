@@ -309,11 +309,29 @@ def _do_fetch() -> list[Article]:
             pool.submit(parse_one_feed, name, url): name
             for name, url in SOURCES.items()
         }
-        for fut in as_completed(futures, timeout=REQUEST_TIMEOUT * 2):
-            try:
-                all_articles.extend(fut.result(timeout=REQUEST_TIMEOUT))
-            except Exception as e:
-                log.warning("Timeout/erreur %s : %s", futures[fut], e)
+        # Timeout global : on attend max GLOBAL_TIMEOUT puis on prend ce qu'on a.
+        # Si as_completed lève TimeoutError, on récupère quand même les futures
+        # qui ont fini, et on jette les autres.
+        global_timeout = REQUEST_TIMEOUT * 3
+        try:
+            for fut in as_completed(futures, timeout=global_timeout):
+                try:
+                    all_articles.extend(fut.result(timeout=REQUEST_TIMEOUT))
+                except Exception as e:
+                    log.warning("Timeout/erreur %s : %s", futures[fut], e)
+        except TimeoutError:
+            log.warning(
+                "Timeout global atteint, on continue avec %d sources OK",
+                sum(1 for f in futures if f.done()),
+            )
+            for fut in futures:
+                if fut.done() and not fut.cancelled():
+                    try:
+                        all_articles.extend(fut.result(timeout=0.1))
+                    except Exception:
+                        pass
+                else:
+                    fut.cancel()
 
     all_articles = dedup(all_articles)
     all_articles.sort(key=lambda x: (x.timestamp, x.score), reverse=True)
