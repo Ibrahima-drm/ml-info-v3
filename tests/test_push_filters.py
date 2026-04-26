@@ -61,3 +61,70 @@ class TestFilters:
         ok = make_article(score=11, lien="https://example.com/ok")
         result = select_article_to_push([low, ok])
         assert result is ok
+
+
+class TestDelivery:
+    """Tests du dispatcher : on mocke webpush() pour vérifier le routing
+    sans envoyer de vraies notifs."""
+
+    def test_send_to_all_subscriptions(self, monkeypatch):
+        from push import send_push_to_all, STORE
+
+        sent = []
+        def fake_webpush(subscription_info, data, vapid_private_key,
+                         vapid_claims, **kwargs):
+            sent.append(subscription_info["endpoint"])
+            class R:
+                status_code = 201
+            return R()
+
+        monkeypatch.setattr("push.webpush", fake_webpush)
+
+        STORE.add_subscription("https://fcm.example/a", "p1", "a1")
+        STORE.add_subscription("https://fcm.example/b", "p2", "a2")
+
+        n_sent, n_dead = send_push_to_all({"title": "T", "body": "B", "url": "/x"})
+        assert n_sent == 2
+        assert n_dead == 0
+        assert sorted(sent) == [
+            "https://fcm.example/a",
+            "https://fcm.example/b",
+        ]
+
+    def test_dead_subscription_removed(self, monkeypatch):
+        from push import send_push_to_all, STORE
+        from pywebpush import WebPushException
+
+        def fake_webpush(subscription_info, *a, **kw):
+            class FakeResp:
+                status_code = 410
+                text = "Gone"
+            raise WebPushException("gone", response=FakeResp())
+
+        monkeypatch.setattr("push.webpush", fake_webpush)
+
+        STORE.add_subscription("https://fcm.example/dead", "p", "a")
+
+        n_sent, n_dead = send_push_to_all({"title": "T", "body": "B", "url": "/x"})
+        assert n_sent == 0
+        assert n_dead == 1
+        assert STORE.list_subscriptions() == []
+
+    def test_transient_error_keeps_subscription(self, monkeypatch):
+        from push import send_push_to_all, STORE
+        from pywebpush import WebPushException
+
+        def fake_webpush(subscription_info, *a, **kw):
+            class FakeResp:
+                status_code = 500
+                text = "boom"
+            raise WebPushException("server error", response=FakeResp())
+
+        monkeypatch.setattr("push.webpush", fake_webpush)
+
+        STORE.add_subscription("https://fcm.example/temp", "p", "a")
+
+        n_sent, n_dead = send_push_to_all({"title": "T", "body": "B", "url": "/x"})
+        assert n_sent == 0
+        assert n_dead == 0
+        assert len(STORE.list_subscriptions()) == 1

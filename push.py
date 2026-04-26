@@ -159,3 +159,67 @@ def select_article_to_push(articles: list) -> Optional[object]:
     if not eligible:
         return None
     return max(eligible, key=lambda a: a.score)
+
+
+# ----------------------------------------------------------------------
+# Envoi via pywebpush
+# ----------------------------------------------------------------------
+
+import json as _json
+
+try:
+    from pywebpush import webpush, WebPushException
+except ImportError:
+    webpush = None
+    WebPushException = Exception
+    log.warning("pywebpush non installé — pas de push possible")
+
+
+def _vapid_claims() -> dict:
+    contact = os.environ.get("VAPID_CONTACT", "mailto:admin@example.com")
+    return {"sub": contact}
+
+
+def send_push_to_all(payload: dict) -> tuple[int, int]:
+    """Envoie le payload à toutes les subscriptions stockées.
+
+    Returns (nombre envoyés OK, nombre subscriptions mortes supprimées).
+    Une subscription qui répond 404/410 est supprimée définitivement.
+    """
+    if webpush is None:
+        return 0, 0
+
+    private_key = os.environ.get("VAPID_PRIVATE_KEY")
+    if not private_key:
+        log.warning("VAPID_PRIVATE_KEY non défini — push impossible")
+        return 0, 0
+
+    n_sent = 0
+    n_dead = 0
+    data = _json.dumps(payload, ensure_ascii=False)
+
+    for sub in STORE.list_subscriptions():
+        sub_info = {
+            "endpoint": sub["endpoint"],
+            "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+        }
+        try:
+            webpush(
+                subscription_info=sub_info,
+                data=data,
+                vapid_private_key=private_key,
+                vapid_claims=_vapid_claims(),
+            )
+            n_sent += 1
+        except WebPushException as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status in (404, 410):
+                STORE.remove_subscription(sub["endpoint"])
+                n_dead += 1
+                log.info("Subscription morte supprimée : %s", sub["endpoint"])
+            else:
+                log.warning("Échec push transitoire (%s) : %s", status, e)
+        except Exception as e:
+            log.warning("Échec push inattendu : %s", e)
+
+    return n_sent, n_dead
