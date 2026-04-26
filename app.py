@@ -22,6 +22,7 @@ import feedparser
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
 import summary as summarizer
+import push
 
 # ----------------------------------------------------------------------
 # Configuration
@@ -489,6 +490,41 @@ def _require_admin_token():
     if not provided or not hmac.compare_digest(provided, expected):
         return jsonify({"error": "unauthorized"}), 401
     return None
+
+
+# ----------------------------------------------------------------------
+# Push notifications API
+# ----------------------------------------------------------------------
+
+@app.route("/api/push/vapid-public-key")
+def push_vapid_public_key():
+    """Expose la clé publique VAPID pour que le navigateur puisse subscribe()."""
+    key = os.environ.get("VAPID_PUBLIC_KEY", "")
+    return jsonify({"key": key})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def push_subscribe():
+    body = request.get_json(silent=True) or {}
+    endpoint = body.get("endpoint", "")
+    keys = body.get("keys") or {}
+    p256dh = keys.get("p256dh", "")
+    auth = keys.get("auth", "")
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"error": "endpoint and keys.p256dh and keys.auth required"}), 400
+    push.STORE.add_subscription(endpoint, p256dh, auth)
+    return jsonify({"status": "subscribed"}), 201
+
+
+@app.route("/api/push/subscribe", methods=["DELETE"])
+def push_unsubscribe():
+    body = request.get_json(silent=True) or {}
+    endpoint = body.get("endpoint", "")
+    if not endpoint:
+        return jsonify({"error": "endpoint required"}), 400
+    push.STORE.remove_subscription(endpoint)
+    return "", 204
+
 
 @app.route("/admin/clear-summaries")
 def clear_summaries():
