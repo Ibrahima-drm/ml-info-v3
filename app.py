@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import socket
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -38,6 +39,7 @@ SOURCES: dict[str, str] = {
     "RFI Afrique":        "https://www.rfi.fr/fr/afrique/rss",
     "France 24 Afrique":  "https://www.france24.com/fr/afrique/rss",
     "Le Monde Afrique":   "https://www.lemonde.fr/afrique/rss_full.xml",
+    "Le Monde Sahel":     "https://www.lemonde.fr/sahel/rss_full.xml",
     "Jeune Afrique":      "https://www.jeuneafrique.com/rss/afrique/",
     "BBC Afrique":        "https://www.bbc.com/afrique/index.xml",
     # Maliens
@@ -45,10 +47,10 @@ SOURCES: dict[str, str] = {
     "Mali Web":           "https://www.maliweb.net/feed/",
     "Journal du Mali":    "https://www.journaldumali.com/feed/",
     "Bamada":             "https://bamada.net/feed",
-    "Maliactu":           "https://maliactu.net/feed/",
     "MaliJet":            "https://malijet.com/feed",
     # International
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/africa.xml",
+    "Africanews":         "https://www.africanews.com/feed/rss",
 }
 
 KEYWORDS: dict[str, list[tuple[str, int]]] = {
@@ -107,6 +109,10 @@ MAX_AGE_DAYS = 7
 MAX_ARTICLES = 80
 REQUEST_TIMEOUT = 4
 USER_AGENT = "ML_INFO/3.0"
+
+# Borne tous les appels urllib (utilisés par feedparser) à REQUEST_TIMEOUT secondes
+# pour éviter qu'une source hang fasse traîner tout le pool.
+socket.setdefaulttimeout(REQUEST_TIMEOUT)
 
 PREFETCH_TOP = 4
 PREFETCH_WORKERS = 2
