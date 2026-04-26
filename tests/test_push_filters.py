@@ -128,3 +128,50 @@ class TestDelivery:
         assert n_sent == 0
         assert n_dead == 0
         assert len(STORE.list_subscriptions()) == 1
+
+
+class TestTrigger:
+    def test_full_flow_eligible_article(self, monkeypatch):
+        from push import trigger_push_for_new_articles, STORE
+
+        sent = []
+        def fake_webpush(subscription_info, data, **kw):
+            sent.append((subscription_info["endpoint"], data))
+            class R:
+                status_code = 201
+            return R()
+        monkeypatch.setattr("push.webpush", fake_webpush)
+
+        STORE.add_subscription("https://fcm.example/a", "p", "a")
+
+        a = make_article(score=15, lien="https://example.com/big-news",
+                         titre="Big news")
+        a.source = "Test"
+
+        result = trigger_push_for_new_articles([a])
+        assert result == "https://example.com/big-news"
+        assert STORE.is_already_notified("https://example.com/big-news") is True
+        assert len(sent) == 1
+
+    def test_full_flow_no_eligible_article(self, monkeypatch):
+        from push import trigger_push_for_new_articles
+
+        def boom(*a, **k):
+            raise AssertionError("webpush should not be called")
+        monkeypatch.setattr("push.webpush", boom)
+
+        a = make_article(score=5)
+        result = trigger_push_for_new_articles([a])
+        assert result is None
+
+    def test_full_flow_no_subscriptions(self, monkeypatch):
+        from push import trigger_push_for_new_articles, STORE
+
+        def boom(*a, **k):
+            raise AssertionError("webpush should not be called")
+        monkeypatch.setattr("push.webpush", boom)
+
+        a = make_article(score=12, lien="https://example.com/x")
+        result = trigger_push_for_new_articles([a])
+        assert result == "https://example.com/x"
+        assert STORE.is_already_notified("https://example.com/x") is True

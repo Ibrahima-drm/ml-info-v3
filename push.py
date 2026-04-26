@@ -223,3 +223,48 @@ def send_push_to_all(payload: dict) -> tuple[int, int]:
             log.warning("Échec push inattendu : %s", e)
 
     return n_sent, n_dead
+
+
+# ----------------------------------------------------------------------
+# Pipeline complète : sélection + envoi + marquage
+# ----------------------------------------------------------------------
+
+def _format_payload(article) -> dict:
+    """Construit le payload JSON envoyé au service worker.
+
+    Format : title = titre, body = "Source • il y a X min", url = lien.
+    """
+    age_min = max(0, int((time.time() - getattr(article, "timestamp", time.time())) / 60))
+    if age_min < 1:
+        age_str = "à l'instant"
+    elif age_min < 60:
+        age_str = f"il y a {age_min} min"
+    else:
+        age_str = f"il y a {age_min // 60}h"
+    return {
+        "title": article.titre,
+        "body": f"{article.source} • {age_str}",
+        "url": article.lien,
+    }
+
+
+def trigger_push_for_new_articles(articles: list) -> Optional[str]:
+    """Pipeline complète : sélectionne un article, envoie les pushs, marque notifié.
+
+    Retourne l'URL pushée, ou None si rien d'éligible.
+    On marque notifié même si 0 subscription, pour ne pas retenter à chaque
+    fetch et saturer les logs.
+    """
+    chosen = select_article_to_push(articles)
+    if chosen is None:
+        return None
+
+    payload = _format_payload(chosen)
+    try:
+        n_sent, n_dead = send_push_to_all(payload)
+        log.info("Push '%s' : %d envoyés, %d supprimés", chosen.lien, n_sent, n_dead)
+    except Exception as e:
+        log.warning("send_push_to_all KO : %s", e)
+
+    STORE.mark_notified(chosen.lien)
+    return chosen.lien
