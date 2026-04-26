@@ -22,3 +22,9 @@ env/
 
 # Cache trafilatura
 .trafilatura_cache/
+
+# DB locale des résumés (libsql / SQLite)
+summaries.db
+summaries.db-*
+*.sqlite
+*.sqlite-*

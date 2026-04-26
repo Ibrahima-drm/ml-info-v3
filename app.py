@@ -5,6 +5,7 @@ catégorisation, récupération parallèle et synthèses d'articles.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import re
@@ -471,12 +472,31 @@ def health():
         "claude_last_call": summarizer.LAST_CLAUDE_STATUS,
     })
 
+def _require_admin_token():
+    """Retourne (response, status) si l'auth échoue, None si OK.
+
+    Le token attendu est lu à chaque requête depuis ADMIN_TOKEN, donc
+    une rotation côté Render ne nécessite pas de redéploiement.
+    Comparaison constant-time pour éviter les timing attacks.
+    """
+    expected = os.environ.get("ADMIN_TOKEN", "").strip()
+    if not expected:
+        return jsonify({"error": "admin disabled (set ADMIN_TOKEN)"}), 503
+    provided = (
+        request.headers.get("X-Admin-Token", "").strip()
+        or request.args.get("token", "").strip()
+    )
+    if not provided or not hmac.compare_digest(provided, expected):
+        return jsonify({"error": "unauthorized"}), 401
+    return None
+
 @app.route("/admin/clear-summaries")
 def clear_summaries():
-    """Vide le cache LRU des résumés. Pour repartir propre après un patch
-    qui change la qualité d'extraction (paywalls, anti-adblock, etc.)."""
-    n = len(summarizer.CACHE)
-    summarizer.CACHE._d.clear()
+    """Vide le cache des résumés (mémoire + DB persistante)."""
+    auth_err = _require_admin_token()
+    if auth_err is not None:
+        return auth_err
+    n = summarizer.CACHE.clear()
     return jsonify({"cleared": n})
 
 # Service worker servi à la racine pour intercepter tout le scope.

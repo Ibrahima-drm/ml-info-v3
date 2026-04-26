@@ -17,41 +17,130 @@ import logging
 import os
 import re
 import threading
+import time
 from collections import OrderedDict
 from typing import Optional
 
 log = logging.getLogger("ml_info.summary")
 
 # ----------------------------------------------------------------------
-# Cache LRU thread-safe (URL → résumé)
+# SummaryStore : cache 2 niveaux (LRU mémoire L1 + libsql/Turso L2)
 # ----------------------------------------------------------------------
+#
+# L1 = OrderedDict en RAM, ~200 entrées, sert les résumés "chauds" en O(1)
+#      sans round-trip réseau.
+# L2 = base libsql persistante. URL via SUMMARY_DB_URL :
+#        - "file:summaries.db" (défaut, dev local) → SQLite local
+#        - "libsql://xxx.turso.io" + SUMMARY_DB_AUTH_TOKEN → Turso (prod)
+#      Survit aux redémarrages du process Render et au sleep/wake.
+#
+# Toutes les opérations L2 sont enveloppées dans un try/except : si la
+# DB est indisponible, on retombe sur L1 sans planter le service.
 
-class LRUCache:
-    def __init__(self, capacity: int = 500):
-        self.capacity = capacity
-        self._d: OrderedDict[str, str] = OrderedDict()
-        self._lock = threading.Lock()
+class SummaryStore:
+    def __init__(self, capacity: int = 200):
+        self._mem_capacity = capacity
+        self._mem: OrderedDict[str, str] = OrderedDict()
+        self._mem_lock = threading.Lock()
+        self._db_lock = threading.Lock()
+        self._client = None
+
+        url = os.environ.get("SUMMARY_DB_URL", "file:summaries.db")
+        token = os.environ.get("SUMMARY_DB_AUTH_TOKEN") or None
+        try:
+            import libsql_client
+            self._client = libsql_client.create_client_sync(
+                url=url, auth_token=token
+            )
+            self._client.execute("""
+                CREATE TABLE IF NOT EXISTS summaries (
+                    url TEXT PRIMARY KEY,
+                    summary TEXT NOT NULL,
+                    source TEXT,
+                    created_at REAL
+                )
+            """)
+            log.info("SummaryStore L2 prêt (%s)", url.split("?")[0])
+        except Exception as e:
+            log.warning("SummaryStore L2 indisponible (%s) — mémoire seule", e)
+            self._client = None
+
+    def _mem_get(self, key: str) -> Optional[str]:
+        with self._mem_lock:
+            if key not in self._mem:
+                return None
+            self._mem.move_to_end(key)
+            return self._mem[key]
+
+    def _mem_set(self, key: str, value: str) -> None:
+        with self._mem_lock:
+            if key in self._mem:
+                self._mem.move_to_end(key)
+            self._mem[key] = value
+            if len(self._mem) > self._mem_capacity:
+                self._mem.popitem(last=False)
 
     def get(self, key: str) -> Optional[str]:
-        with self._lock:
-            if key not in self._d:
-                return None
-            self._d.move_to_end(key)
-            return self._d[key]
+        v = self._mem_get(key)
+        if v is not None:
+            return v
+        if self._client is None:
+            return None
+        try:
+            with self._db_lock:
+                rs = self._client.execute(
+                    "SELECT summary FROM summaries WHERE url = ?", (key,)
+                )
+            if rs.rows:
+                summary = rs.rows[0][0]
+                self._mem_set(key, summary)
+                return summary
+        except Exception as e:
+            log.warning("SummaryStore L2 read KO : %s", e)
+        return None
 
-    def set(self, key: str, value: str) -> None:
-        with self._lock:
-            if key in self._d:
-                self._d.move_to_end(key)
-            self._d[key] = value
-            if len(self._d) > self.capacity:
-                self._d.popitem(last=False)
+    def set(self, key: str, value: str, source: str = "") -> None:
+        self._mem_set(key, value)
+        if self._client is None:
+            return
+        try:
+            with self._db_lock:
+                self._client.execute(
+                    "INSERT OR REPLACE INTO summaries(url, summary, source, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (key, value, source, time.time()),
+                )
+        except Exception as e:
+            log.warning("SummaryStore L2 write KO : %s", e)
+
+    def clear(self) -> int:
+        with self._mem_lock:
+            self._mem.clear()
+        if self._client is None:
+            return 0
+        try:
+            with self._db_lock:
+                rs = self._client.execute("SELECT COUNT(*) FROM summaries")
+                n = int(rs.rows[0][0]) if rs.rows else 0
+                self._client.execute("DELETE FROM summaries")
+            return n
+        except Exception as e:
+            log.warning("SummaryStore L2 clear KO : %s", e)
+            return 0
 
     def __len__(self) -> int:
-        with self._lock:
-            return len(self._d)
+        if self._client is None:
+            with self._mem_lock:
+                return len(self._mem)
+        try:
+            with self._db_lock:
+                rs = self._client.execute("SELECT COUNT(*) FROM summaries")
+            return int(rs.rows[0][0]) if rs.rows else 0
+        except Exception:
+            with self._mem_lock:
+                return len(self._mem)
 
-CACHE = LRUCache(capacity=500)
+CACHE = SummaryStore(capacity=200)
 
 # Diagnostic Claude : on retient le dernier statut/erreur pour /health
 LAST_CLAUDE_STATUS: dict = {"called": False, "ok": False, "error": None}
@@ -326,7 +415,9 @@ def get_summary(url: str, title: str = "", source: str = "",
             summary = fallback_desc or ""
             mode = "fallback"
 
-        if summary:
-            CACHE.set(url, summary)
+        # On ne persiste pas le fallback "description RSS brute" :
+        # ce n'est pas un vrai résumé, et il a déjà l'air dans l'article.
+        if summary and mode != "fallback":
+            CACHE.set(url, summary, source=mode)
 
     return {"summary": summary, "source": mode}

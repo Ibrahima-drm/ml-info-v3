@@ -10,7 +10,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      # Décommente et renseigne dans le dashboard Render pour activer
-      # les résumés via Claude :
-      # - key: ANTHROPIC_API_KEY
-      #   sync: false
+      # À renseigner dans le dashboard Render :
+      #   ANTHROPIC_API_KEY        — pour activer les résumés via Claude
+      #   SUMMARY_DB_URL           — libsql://xxx.turso.io  (Turso prod)
+      #   SUMMARY_DB_AUTH_TOKEN    — JWT généré par turso db tokens create
+      #   ADMIN_TOKEN              — token pour protéger /admin/*
+      # Sans SUMMARY_DB_URL, l'app utilise un fichier SQLite local
+      # (éphémère sur Render free, juste utile en dev).
