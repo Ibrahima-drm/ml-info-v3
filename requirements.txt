@@ -1,0 +1,8 @@
+Flask>=3.0
+feedparser>=6.0
+trafilatura>=1.12
+gunicorn>=21.0
+# Optionnel : décommenter pour activer le mode résumé via Claude.
+# Tu peux aussi simplement faire `pip install anthropic` localement et
+# définir ANTHROPIC_API_KEY ; le code détecte automatiquement.
+# anthropic>=0.39

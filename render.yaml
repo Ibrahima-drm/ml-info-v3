@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ml-info
+    runtime: python
+    plan: free
+    region: frankfurt          # plus proche que Oregon pour la France/le Mali
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Décommente et renseigne dans le dashboard Render pour activer
+      # les résumés via Claude :
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false

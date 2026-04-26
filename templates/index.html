@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#020617">
+<meta name="description" content="Veille sécuritaire et actualité du Mali avec synthèses automatiques.">
+<meta name="color-scheme" content="dark">
+
+<!-- PWA — fonctionne sur iPhone (Safari) et Android (Chrome) -->
+<link rel="manifest" href="/static/manifest.json">
+
+<!-- iOS spécifique -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ML Info">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+
+<!-- Android spécifique -->
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+
+<title>ML Info — Veille Mali</title>
+
+<style>
+:root {
+    --bg: #0f172a;
+    --bg-deep: #020617;
+    --card: #1e293b;
+    --card-hover: #283549;
+    --accent: #22c55e;
+    --accent-dim: #16a34a;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #334155;
+
+    --sat: env(safe-area-inset-top);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+    --sar: env(safe-area-inset-right);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 "Roboto", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+    overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================== HEADER ========================== */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: calc(12px + var(--sat)) 14px 10px;
+    background: rgba(2, 6, 23, 0.92);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid var(--border);
+}
+
+.title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.app-title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.app-title .accent { color: var(--accent); }
+
+.last-update {
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
+/* ========================== SEARCH ========================== */
+.search-wrap {
+    margin-top: 10px;
+    position: relative;
+}
+.search-wrap input {
+    width: 100%;
+    padding: 11px 36px 11px 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+.search-icon {
+    position: absolute;
+    left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+.search-clear {
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--border);
+    border: none;
+    color: var(--text);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+}
+.search-wrap.has-text .search-clear { display: block; }
+
+/* ========================== FILTRES ========================== */
+.filters {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 0 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.filters::-webkit-scrollbar { display: none; }
+
+.chip {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.chip:active { transform: scale(0.95); }
+.chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 600;
+}
+
+/* ========================== PULL TO REFRESH ========================== */
+.ptr {
+    text-align: center;
+    padding: 8px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    height: 0;
+    overflow: hidden;
+    transition: height 0.2s;
+}
+.ptr.active  { height: 32px; }
+.ptr.loading::before {
+    content: "";
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========================== CARDS ========================== */
+.container {
+    padding: 6px 12px calc(20px + var(--sab));
+}
+
+.empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+}
+.empty-icon { font-size: 2.4rem; opacity: 0.4; margin-bottom: 10px; }
+
+.card {
+    background: var(--card);
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+    animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.card.fav { border-color: var(--warn); }
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.72rem;
+    margin-bottom: 6px;
+}
+.source-tag {
+    color: var(--accent);
+    font-weight: 600;
+}
+.cat-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+}
+.cat-securite  { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.cat-politique { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+.cat-economie  { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+.cat-geographie{ background: rgba(34, 197, 94, 0.15); color: #86efac; }
+
+.date-rel {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 4px 0 8px;
+}
+
+/* ========================== SYNTHÈSE ========================== */
+.summary {
+    font-size: 0.88rem;
+    color: var(--text);
+    line-height: 1.55;
+    background: rgba(34, 197, 94, 0.06);
+    border-left: 3px solid var(--accent-dim);
+    padding: 10px 12px;
+    border-radius: 0 8px 8px 0;
+    margin: 6px 0 4px;
+}
+.summary.collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.summary-toggle {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 4px 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* Skeleton loading */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(148,163,184,0.06) 25%,
+        rgba(148,163,184,0.18) 50%,
+        rgba(148,163,184,0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    height: 12px;
+    margin: 6px 0;
+}
+.skeleton:nth-child(2) { width: 92%; }
+.skeleton:nth-child(3) { width: 78%; }
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.summary-source {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+.summary-source.claude { color: #c4b5fd; }
+.summary-source.extractive { color: var(--muted); }
+
+/* ========================== ACTIONS ========================== */
+.card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    align-items: center;
+}
+.btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.83rem;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+}
+.btn:active { background: rgba(34, 197, 94, 0.15); }
+.btn-icon {
+    color: var(--muted);
+    margin-left: auto;
+    font-size: 1.05rem;
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-family: inherit;
+}
+.btn-icon.active { color: var(--warn); }
+
+/* ========================== TOAST ========================== */
+.toast {
+    position: fixed;
+    bottom: calc(20px + var(--sab));
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s;
+    z-index: 100;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Bandeau "installer l'app" pour Android */
+.install-prompt {
+    position: fixed;
+    bottom: calc(16px + var(--sab));
+    left: 16px;
+    right: 16px;
+    background: var(--card);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 90;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.install-prompt.show { display: flex; }
+.install-prompt-text { flex: 1; font-size: 0.85rem; }
+.install-prompt button {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+.install-prompt .close {
+    background: transparent;
+    color: var(--muted);
+    padding: 6px;
+    font-size: 1.1rem;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="title-bar">
+        <div class="app-title">🇲🇱 ML <span class="accent">Info</span></div>
+        <div class="last-update">
+            <span class="dot"></span>
+            <span id="updateTime">{{ last_update }}</span>
+        </div>
+    </div>
+
+    <div class="search-wrap" id="searchWrap">
+        <span class="search-icon">🔍</span>
+        <input id="search" type="search" placeholder="Rechercher (ex. Kidal, JNIM…)" autocomplete="off">
+        <button class="search-clear" onclick="clearSearch()" aria-label="Effacer">✕</button>
+    </div>
+
+    <div class="filters" id="catFilters" role="tablist">
+        <button class="chip active" data-cat="all">Tout</button>
+        <button class="chip" data-cat="securite">🛡 Sécurité</button>
+        <button class="chip" data-cat="politique">🏛 Politique</button>
+        <button class="chip" data-cat="economie">💰 Économie</button>
+        <button class="chip" data-cat="geographie">📍 Régions</button>
+        <button class="chip" data-cat="fav">⭐ Favoris</button>
+    </div>
+</header>
+
+<div class="ptr" id="ptr">Tirer pour rafraîchir…</div>
+
+<div class="container" id="container">
+    {% if articles %}
+        {% for a in articles %}
+        <article class="card"
+             data-link="{{ a.lien }}"
+             data-cat="{{ a.categorie }}"
+             data-source="{{ a.source }}"
+             data-iso="{{ a.date_iso }}"
+             data-title="{{ a.titre }}">
+            <div class="card-meta">
+                <div>
+                    <span class="source-tag">{{ a.source }}</span>
+                    {% if a.categorie %}
+                    <span class="cat-badge cat-{{ a.categorie }}">{{ a.categorie }}</span>
+                    {% endif %}
+                </div>
+                <span class="date-rel" data-iso="{{ a.date_iso }}">{{ a.date_affichee }}</span>
+            </div>
+
+            <h2 class="card-title">{{ a.titre }}</h2>
+
+            <div class="summary-wrap">
+                <div class="summary collapsed">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+                <div class="summary-source"></div>
+            </div>
+
+            <div class="card-actions">
+                <button class="btn summary-toggle" style="display:none">Voir plus</button>
+                <a class="btn" href="{{ a.lien }}" target="_blank" rel="noopener">Source ↗</a>
+                <button class="btn-icon share-btn" title="Partager" aria-label="Partager">⇪</button>
+                <button class="btn-icon fav-btn" title="Favori" aria-label="Favori">☆</button>
+            </div>
+        </article>
+        {% endfor %}
+    {% else %}
+        <div class="empty">
+            <div class="empty-icon">📭</div>
+            <div>Aucun article ne correspond pour l'instant.</div>
+            <div style="margin-top:10px;font-size:0.8rem;">Réessaie dans quelques minutes.</div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="install-prompt" id="installPrompt">
+    <span class="install-prompt-text">Installer ML Info comme application ?</span>
+    <button id="installBtn">Installer</button>
+    <button class="close" id="installClose" aria-label="Fermer">✕</button>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// Service Worker (PWA Android — iOS n'en a pas besoin)
+// ============================================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .catch(err => console.warn('SW registration failed:', err));
+    });
+}
+
+// ============================================================
+// Bandeau d'installation Android (beforeinstallprompt)
+// ============================================================
+let deferredInstall = null;
+const installPrompt = document.getElementById('installPrompt');
+const installBtn    = document.getElementById('installBtn');
+const installClose  = document.getElementById('installClose');
+
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstall = e;
+    if (!localStorage.getItem('ml_install_dismissed')) {
+        installPrompt.classList.add('show');
+    }
+});
+installBtn.addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    const { outcome } = await deferredInstall.userChoice;
+    if (outcome === 'accepted') toast('App installée');
+    deferredInstall = null;
+    installPrompt.classList.remove('show');
+});
+installClose.addEventListener('click', () => {
+    localStorage.setItem('ml_install_dismissed', '1');
+    installPrompt.classList.remove('show');
+});
+
+// ============================================================
+// Recherche en temps réel (debounced)
+// ============================================================
+const searchInput = document.getElementById('search');
+const searchWrap  = document.getElementById('searchWrap');
+let searchTimer;
+
+searchInput.addEventListener('input', () => {
+    searchWrap.classList.toggle('has-text', !!searchInput.value);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 120);
+});
+
+function clearSearch() {
+    searchInput.value = '';
+    searchWrap.classList.remove('has-text');
+    applyFilters();
+    searchInput.focus();
+}
+
+// ============================================================
+// Filtres par catégorie + favoris
+// ============================================================
+let activeCat = 'all';
+document.querySelectorAll('#catFilters .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        document.querySelectorAll('#catFilters .chip')
+            .forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        activeCat = chip.dataset.cat;
+        applyFilters();
+        if (navigator.vibrate) navigator.vibrate(8);
+    });
+});
+
+function applyFilters() {
+    const q = searchInput.value.toLowerCase().trim();
+    const favs = getFavs();
+    let visible = 0;
+    document.querySelectorAll('.card').forEach(card => {
+        const cat = card.dataset.cat;
+        const text = card.innerText.toLowerCase();
+        const link = card.dataset.link;
+
+        const matchCat = (activeCat === 'all')
+            || (activeCat === 'fav' ? favs.has(link) : cat === activeCat);
+        const matchText = !q || text.includes(q);
+
+        const show = matchCat && matchText;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    let empty = document.querySelector('.empty.dynamic');
+    if (visible === 0) {
+        if (!empty) {
+            empty = document.createElement('div');
+            empty.className = 'empty dynamic';
+            empty.innerHTML = '<div class="empty-icon">🔍</div><div>Aucun résultat</div>';
+            document.getElementById('container').appendChild(empty);
+        }
+    } else if (empty) {
+        empty.remove();
+    }
+}
+
+// ============================================================
+// Favoris en localStorage
+// ============================================================
+function getFavs() {
+    try { return new Set(JSON.parse(localStorage.getItem('ml_favs') || '[]')); }
+    catch { return new Set(); }
+}
+function saveFavs(set) {
+    localStorage.setItem('ml_favs', JSON.stringify([...set]));
+}
+
+document.querySelectorAll('.fav-btn').forEach(btn => {
+    const card = btn.closest('.card');
+    const link = card.dataset.link;
+    const favs = getFavs();
+    if (favs.has(link)) {
+        btn.textContent = '★';
+        btn.classList.add('active');
+        card.classList.add('fav');
+    }
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const favs = getFavs();
+        if (favs.has(link)) {
+            favs.delete(link);
+            btn.textContent = '☆';
+            btn.classList.remove('active');
+            card.classList.remove('fav');
+        } else {
+            favs.add(link);
+            btn.textContent = '★';
+            btn.classList.add('active');
+            card.classList.add('fav');
+            toast('Ajouté aux favoris');
+        }
+        saveFavs(favs);
+        if (activeCat === 'fav') applyFilters();
+        if (navigator.vibrate) navigator.vibrate(8);
+    });
+});
+
+// ============================================================
+// Partage natif (Web Share API)
+// ============================================================
+document.querySelectorAll('.share-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const card = btn.closest('.card');
+        const data = {
+            title: card.dataset.title,
+            text: card.dataset.title + ' — ' + card.dataset.source,
+            url: card.dataset.link,
+        };
+        try {
+            if (navigator.share) {
+                await navigator.share(data);
+            } else {
+                await navigator.clipboard.writeText(data.url);
+                toast('Lien copié');
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') console.warn(err);
+        }
+    });
+});
+
+// ============================================================
+// Dates relatives
+// ============================================================
+function relativeDate(iso) {
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)        return 'à l\'instant';
+    if (diff < 3600)      return `il y a ${Math.floor(diff/60)} min`;
+    if (diff < 86400)     return `il y a ${Math.floor(diff/3600)} h`;
+    if (diff < 86400 * 2) return 'hier';
+    if (diff < 86400 * 7) return `il y a ${Math.floor(diff/86400)} j`;
+    return d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+}
+function refreshDates() {
+    document.querySelectorAll('.date-rel').forEach(el => {
+        const iso = el.dataset.iso;
+        if (iso) el.textContent = relativeDate(iso);
+    });
+}
+refreshDates();
+setInterval(refreshDates, 60_000);
+
+// ============================================================
+// Chargement des synthèses (lazy avec IntersectionObserver)
+// ============================================================
+const summaryCache = new Map();      // url -> {summary, source}
+const inFlight     = new Map();      // url -> Promise
+
+async function fetchSummary(url, title, source) {
+    if (summaryCache.has(url)) return summaryCache.get(url);
+    if (inFlight.has(url))     return inFlight.get(url);
+
+    const params = new URLSearchParams({ url, title, source });
+    const p = fetch('/api/summary?' + params)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(data => {
+            summaryCache.set(url, data);
+            inFlight.delete(url);
+            return data;
+        })
+        .catch(err => {
+            inFlight.delete(url);
+            throw err;
+        });
+    inFlight.set(url, p);
+    return p;
+}
+
+function renderSummary(card, data) {
+    const wrap = card.querySelector('.summary-wrap');
+    const summaryEl = wrap.querySelector('.summary');
+    const sourceEl  = wrap.querySelector('.summary-source');
+    const toggle    = card.querySelector('.summary-toggle');
+
+    const text = (data.summary || '').trim();
+    if (!text) {
+        summaryEl.innerHTML = '<em style="color:var(--muted)">Synthèse indisponible</em>';
+        sourceEl.textContent = '';
+        return;
+    }
+    summaryEl.textContent = text;
+
+    // Affiche le bouton "Voir plus" si le résumé dépasse la zone collapsed
+    requestAnimationFrame(() => {
+        if (summaryEl.scrollHeight > summaryEl.clientHeight + 4) {
+            toggle.style.display = '';
+            toggle.textContent = 'Voir plus';
+            toggle.onclick = () => {
+                summaryEl.classList.toggle('collapsed');
+                toggle.textContent = summaryEl.classList.contains('collapsed')
+                    ? 'Voir plus' : 'Voir moins';
+            };
+        }
+    });
+
+    const labels = { claude:'✦ Claude', extractive:'Extrait', cache:'', fallback:'RSS' };
+    sourceEl.textContent = labels[data.source] || '';
+    sourceEl.className = 'summary-source ' + (data.source || '');
+}
+
+// IntersectionObserver pour charger seulement ce qui est visible
+const io = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const card = entry.target;
+        io.unobserve(card);
+
+        const url = card.dataset.link;
+        const title = card.dataset.title;
+        const source = card.dataset.source;
+        if (!url) continue;
+
+        fetchSummary(url, title, source)
+            .then(data => renderSummary(card, data))
+            .catch(() => {
+                const summaryEl = card.querySelector('.summary');
+                summaryEl.innerHTML =
+                    '<em style="color:var(--muted)">Synthèse indisponible</em>';
+            });
+    }
+}, { rootMargin: '300px 0px' });
+
+document.querySelectorAll('.card').forEach(card => io.observe(card));
+
+// ============================================================
+// Pull-to-refresh
+// ============================================================
+const ptr = document.getElementById('ptr');
+let startY = 0, pulling = false;
+
+document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        pulling = true;
+    }
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 60) ptr.classList.add('active');
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+    if (ptr.classList.contains('active')) {
+        ptr.classList.add('loading');
+        ptr.textContent = 'Mise à jour…';
+        fetch('/api/articles?refresh=1')
+            .then(() => location.reload())
+            .catch(() => {
+                ptr.classList.remove('loading', 'active');
+                toast('Échec — connexion ?');
+            });
+    }
+    pulling = false;
+});
+
+// ============================================================
+// Auto-refresh toutes les 5 min
+// ============================================================
+setTimeout(() => location.reload(), 5 * 60 * 1000);
+
+// ============================================================
+// Toast helper
+// ============================================================
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+</script>
+
+</body>
+</html>

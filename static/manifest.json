@@ -1,0 +1,25 @@
+{
+  "name": "ML Info — Veille Mali",
+  "short_name": "ML Info",
+  "description": "Agrégation d'actualités sur le Mali (sécurité, politique, économie).",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#020617",
+  "lang": "fr-FR",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
