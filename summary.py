@@ -119,6 +119,11 @@ _boilerplate_patterns = [
     re.compile(r"merci\s+de\s+(la\s+)?désactiver", re.I),
     re.compile(r"semble\s+bloquer", re.I),
     re.compile(r"bloqueur\s+de\s+publicit", re.I),
+    re.compile(r"this\s+may\s+be\s+due\s+to\s+a\s+browser\s+extension", re.I),
+    re.compile(r"browser\s+extension", re.I),
+    re.compile(r"ad[\s-]?block(er)?", re.I),
+    re.compile(r"network\s+issue", re.I),
+    re.compile(r"\btry\s+(again|reloading)\b", re.I),
     # Réseaux sociaux (boutons partage qui finissent dans le texte)
     re.compile(r"^(partager|tweeter|facebook|whatsapp|linkedin)\b", re.I),
 ]
@@ -130,7 +135,8 @@ _consent_signals = re.compile(
     r"pour\s+afficher\s+ce\s+contenu|required\s+part\s+of\s+this\s+site|"
     r"désactivez?\s+votre\s+(bloqueur|adblock)|javascript|"
     r"une\s+extension\s+de\s+votre\s+navigateur|semble\s+bloquer|"
-    r"bloqueur\s+de\s+publicit)",
+    r"bloqueur\s+de\s+publicit|browser\s+extension|"
+    r"this\s+may\s+be\s+due\s+to|ad[\s-]?block(er)?|network\s+issue)",
     re.I,
 )
 

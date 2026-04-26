@@ -433,20 +433,6 @@ header {
         </div>
     </div>
 
-    <div class="search-wrap" id="searchWrap">
-        <span class="search-icon">🔍</span>
-        <input id="search" type="search" placeholder="Rechercher (ex. Kidal, JNIM…)" autocomplete="off">
-        <button class="search-clear" onclick="clearSearch()" aria-label="Effacer">✕</button>
-    </div>
-
-    <div class="filters" id="catFilters" role="tablist">
-        <button class="chip active" data-cat="all">Tout</button>
-        <button class="chip" data-cat="securite">🛡 Sécurité</button>
-        <button class="chip" data-cat="politique">🏛 Politique</button>
-        <button class="chip" data-cat="economie">💰 Économie</button>
-        <button class="chip" data-cat="regions">📍 Régions</button>
-        <button class="chip" data-cat="fav">⭐ Favoris</button>
-    </div>
 </header>
 
 <div class="ptr" id="ptr">Tirer pour rafraîchir…</div>
@@ -547,70 +533,8 @@ installClose.addEventListener('click', () => {
     installPrompt.classList.remove('show');
 });
 
-// ============================================================
-// Recherche en temps réel (debounced)
-// ============================================================
-const searchInput = document.getElementById('search');
-const searchWrap  = document.getElementById('searchWrap');
-let searchTimer;
-
-searchInput.addEventListener('input', () => {
-    searchWrap.classList.toggle('has-text', !!searchInput.value);
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(applyFilters, 120);
-});
-
-function clearSearch() {
-    searchInput.value = '';
-    searchWrap.classList.remove('has-text');
-    applyFilters();
-    searchInput.focus();
-}
-
-// ============================================================
-// Filtres par catégorie + favoris
-// ============================================================
-let activeCat = 'all';
-document.querySelectorAll('#catFilters .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-        document.querySelectorAll('#catFilters .chip')
-            .forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        activeCat = chip.dataset.cat;
-        applyFilters();
-        if (navigator.vibrate) navigator.vibrate(8);
-    });
-});
-
-function applyFilters() {
-    const q = searchInput.value.toLowerCase().trim();
-    const favs = getFavs();
-    let visible = 0;
-    document.querySelectorAll('.card').forEach(card => {
-        const cat = card.dataset.cat;
-        const text = card.innerText.toLowerCase();
-        const link = card.dataset.link;
-
-        const matchCat = (activeCat === 'all')
-            || (activeCat === 'fav' ? favs.has(link) : cat === activeCat);
-        const matchText = !q || text.includes(q);
-
-        const show = matchCat && matchText;
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
-    });
-    let empty = document.querySelector('.empty.dynamic');
-    if (visible === 0) {
-        if (!empty) {
-            empty = document.createElement('div');
-            empty.className = 'empty dynamic';
-            empty.innerHTML = '<div class="empty-icon">🔍</div><div>Aucun résultat</div>';
-            document.getElementById('container').appendChild(empty);
-        }
-    } else if (empty) {
-        empty.remove();
-    }
-}
+// Filtres désactivés : on affiche toutes les actus directement.
+function applyFilters() { /* no-op */ }
 
 // ============================================================
 // Favoris en localStorage
@@ -648,7 +572,6 @@ document.querySelectorAll('.fav-btn').forEach(btn => {
             toast('Ajouté aux favoris');
         }
         saveFavs(favs);
-        if (activeCat === 'fav') applyFilters();
         if (navigator.vibrate) navigator.vibrate(8);
     });
 });
