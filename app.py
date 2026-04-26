@@ -352,6 +352,19 @@ def _do_fetch() -> list[Article]:
     )
 
     _prefetch_summaries(all_articles)
+
+    # Trigger push notification (background, non-bloquant) — un seul article
+    # poussé par cycle de fetch, filtré par score / dedup / cap 30 min.
+    def _push_task():
+        try:
+            push.trigger_push_for_new_articles(all_articles)
+        except Exception as e:
+            log.warning("Push trigger KO : %s", e)
+    try:
+        _prefetch_pool.submit(_push_task)
+    except RuntimeError:
+        pass
+
     return all_articles
 
 def _trigger_background_refresh() -> bool:
