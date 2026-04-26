@@ -96,8 +96,8 @@ MAX_ARTICLES = 80
 REQUEST_TIMEOUT = 10
 USER_AGENT = "ML_INFO/3.0"
 
-PREFETCH_TOP = 12
-PREFETCH_WORKERS = 4
+PREFETCH_TOP = 4
+PREFETCH_WORKERS = 2
 
 # ----------------------------------------------------------------------
 # Modèle
@@ -286,7 +286,7 @@ def fetch_all(force: bool = False) -> list[Article]:
     t0 = time.time()
     all_articles: list[Article] = []
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {
             pool.submit(parse_one_feed, name, url): name
             for name, url in SOURCES.items()
