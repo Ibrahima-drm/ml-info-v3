@@ -50,7 +50,7 @@ SOURCES: dict[str, str] = {
     "MaliJet":            "https://malijet.com/feed",
     # International
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/africa.xml",
-    "Africanews":         "https://www.africanews.com/feed/rss",
+    "Africanews":         "https://fr.africanews.com/feed/rss",
 }
 
 KEYWORDS: dict[str, list[tuple[str, int]]] = {
