@@ -123,3 +123,39 @@ class PushStore:
 
 # Instance globale, créée au load
 STORE = PushStore()
+
+
+# ----------------------------------------------------------------------
+# Trigger : filtres + sélection de l'article à pousser
+# ----------------------------------------------------------------------
+
+PUSH_SCORE_THRESHOLD = 10
+PUSH_MIN_INTERVAL_SEC = 30 * 60  # 1 push max toutes les 30 min
+
+
+def select_article_to_push(articles: list) -> Optional[object]:
+    """Retourne l'article éligible avec le plus haut score, ou None.
+
+    Filtres dans cet ordre :
+      1. liste vide → None
+      2. dernier push global < PUSH_MIN_INTERVAL_SEC → None (cap anti-spam)
+      3. score ≥ PUSH_SCORE_THRESHOLD
+      4. URL pas déjà dans notified_articles
+      5. parmi les survivants, prend le score max
+    """
+    if not articles:
+        return None
+
+    elapsed = time.time() - STORE.last_push_at()
+    if elapsed < PUSH_MIN_INTERVAL_SEC:
+        return None
+
+    eligible = [
+        a for a in articles
+        if getattr(a, "score", 0) >= PUSH_SCORE_THRESHOLD
+        and getattr(a, "lien", "")
+        and not STORE.is_already_notified(a.lien)
+    ]
+    if not eligible:
+        return None
+    return max(eligible, key=lambda a: a.score)
