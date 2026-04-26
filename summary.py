@@ -72,7 +72,7 @@ def _get_url_lock(url: str) -> threading.Lock:
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) ML_INFO/3.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 )
 
 # Découpage de phrases francophone simple

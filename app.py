@@ -1,9 +1,6 @@
 """
-ML_INFO — Veille sécuritaire & actualité du Mali
-Backend Flask agrégeant des flux RSS avec scoring de pertinence,
+ML_INFO — Backend Flask agrégeant des flux RSS avec scoring de pertinence,
 catégorisation, récupération parallèle et synthèses d'articles.
-
-Auteur : Ibrahima A. DIAROUMBA
 """
 
 from __future__ import annotations
@@ -97,7 +94,7 @@ CACHE_DURATION = 180
 MAX_AGE_DAYS = 7
 MAX_ARTICLES = 80
 REQUEST_TIMEOUT = 10
-USER_AGENT = "ML_INFO/3.0 (+veille sécuritaire Mali)"
+USER_AGENT = "ML_INFO/3.0"
 
 PREFETCH_TOP = 12
 PREFETCH_WORKERS = 4
