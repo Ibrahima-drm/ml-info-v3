@@ -471,7 +471,6 @@ header {
                 <button class="btn summary-toggle" style="display:none">Voir plus</button>
                 <a class="btn" href="{{ a.lien }}" target="_blank" rel="noopener">Source ↗</a>
                 <button class="btn-icon share-btn" title="Partager" aria-label="Partager">⇪</button>
-                <button class="btn-icon fav-btn" title="Favori" aria-label="Favori">☆</button>
             </div>
         </article>
         {% endfor %}
@@ -535,46 +534,6 @@ installClose.addEventListener('click', () => {
 
 // Filtres désactivés : on affiche toutes les actus directement.
 function applyFilters() { /* no-op */ }
-
-// ============================================================
-// Favoris en localStorage
-// ============================================================
-function getFavs() {
-    try { return new Set(JSON.parse(localStorage.getItem('ml_favs') || '[]')); }
-    catch { return new Set(); }
-}
-function saveFavs(set) {
-    localStorage.setItem('ml_favs', JSON.stringify([...set]));
-}
-
-document.querySelectorAll('.fav-btn').forEach(btn => {
-    const card = btn.closest('.card');
-    const link = card.dataset.link;
-    const favs = getFavs();
-    if (favs.has(link)) {
-        btn.textContent = '★';
-        btn.classList.add('active');
-        card.classList.add('fav');
-    }
-    btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const favs = getFavs();
-        if (favs.has(link)) {
-            favs.delete(link);
-            btn.textContent = '☆';
-            btn.classList.remove('active');
-            card.classList.remove('fav');
-        } else {
-            favs.add(link);
-            btn.textContent = '★';
-            btn.classList.add('active');
-            card.classList.add('fav');
-            toast('Ajouté aux favoris');
-        }
-        saveFavs(favs);
-        if (navigator.vibrate) navigator.vibrate(8);
-    });
-});
 
 // ============================================================
 // Partage natif (Web Share API)
