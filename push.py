@@ -80,6 +80,38 @@ class PushStore:
             for r in rs.rows
         ]
 
+    def mark_notified(self, url: str) -> None:
+        if self._client is None:
+            return
+        with self._lock:
+            self._client.execute(
+                "INSERT OR REPLACE INTO notified_articles(url, notified_at)"
+                " VALUES (?, ?)",
+                (url, time.time()),
+            )
+
+    def is_already_notified(self, url: str) -> bool:
+        if self._client is None:
+            return False
+        with self._lock:
+            rs = self._client.execute(
+                "SELECT 1 FROM notified_articles WHERE url = ? LIMIT 1",
+                (url,),
+            )
+        return bool(rs.rows)
+
+    def last_push_at(self) -> float:
+        """Timestamp du dernier mark_notified, ou 0.0 si jamais notifié.
+        Sert au cap anti-spam (1 push toutes les 30 min)."""
+        if self._client is None:
+            return 0.0
+        with self._lock:
+            rs = self._client.execute(
+                "SELECT MAX(notified_at) FROM notified_articles"
+            )
+        v = rs.rows[0][0] if rs.rows else None
+        return float(v) if v is not None else 0.0
+
     def clear_all(self) -> None:
         """Test helper : vide les deux tables."""
         if self._client is None:

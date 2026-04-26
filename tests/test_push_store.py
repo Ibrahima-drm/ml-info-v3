@@ -44,3 +44,33 @@ class TestSubscriptionCRUD:
         store = PushStore()
         # Doesn't raise
         store.remove_subscription("https://nonexistent.example/xyz")
+
+
+class TestNotifiedArticles:
+    def test_not_notified_by_default(self):
+        store = PushStore()
+        assert store.is_already_notified("https://example.com/a") is False
+
+    def test_mark_then_is_notified(self):
+        store = PushStore()
+        store.mark_notified("https://example.com/a")
+        assert store.is_already_notified("https://example.com/a") is True
+
+    def test_mark_idempotent(self):
+        store = PushStore()
+        store.mark_notified("https://example.com/a")
+        store.mark_notified("https://example.com/a")
+        assert store.is_already_notified("https://example.com/a") is True
+
+    def test_last_push_at_empty(self):
+        store = PushStore()
+        assert store.last_push_at() == 0.0
+
+    def test_last_push_at_after_mark(self):
+        import time as _t
+        store = PushStore()
+        before = _t.time()
+        store.mark_notified("https://example.com/a")
+        after = _t.time()
+        ts = store.last_push_at()
+        assert before <= ts <= after
