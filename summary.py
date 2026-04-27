@@ -47,10 +47,6 @@ class SummaryStore:
 
         url = os.environ.get("SUMMARY_DB_URL", "file:summaries.db")
         token = os.environ.get("SUMMARY_DB_AUTH_TOKEN") or None
-        # libsql:// fait du WebSocket (wss://) qui plante en 505 sur Turso
-        # depuis certaines versions ; on force le transport HTTP.
-        if url.startswith("libsql://"):
-            url = "https://" + url[len("libsql://"):]
         try:
             import libsql_client
             self._client = libsql_client.create_client_sync(

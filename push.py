@@ -1,5 +1,10 @@
 """Push notifications : stockage des subscriptions et déduplication des articles
-notifiés. Tables dans la même DB Turso que les résumés (SUMMARY_DB_URL)."""
+notifiés. Tente Turso d'abord, fallback en mémoire si la connexion libsql
+échoue (cas connu : libsql_client v0.3 qui plante en WS handshake 505).
+
+Le fallback mémoire est volontairement simple : sur restart Render, les
+subscriptions sont perdues et l'utilisateur doit re-tap la cloche. Pour un
+usage perso, c'est acceptable."""
 
 from __future__ import annotations
 
@@ -19,12 +24,13 @@ class PushStore:
         self.init_error: Optional[str] = None
         self.init_url: Optional[str] = None
 
+        # Fallback mémoire utilisé quand libsql est indisponible.
+        self._mem_subs: dict[str, dict] = {}
+        self._mem_notified: dict[str, float] = {}
+        self._mem_last_push: float = 0.0
+
         url = os.environ.get("SUMMARY_DB_URL", "file:summaries.db")
         token = os.environ.get("SUMMARY_DB_AUTH_TOKEN") or None
-        # libsql:// fait du WebSocket (wss://) qui plante en 505 sur Turso
-        # depuis certaines versions ; on force le transport HTTP.
-        if url.startswith("libsql://"):
-            url = "https://" + url[len("libsql://"):]
         self.init_url = url.split("?")[0]
         try:
             import libsql_client
@@ -35,7 +41,7 @@ class PushStore:
             log.info("PushStore prêt (%s)", self.init_url)
         except Exception as e:
             self.init_error = f"{type(e).__name__}: {e}"
-            log.warning("PushStore L2 indisponible : %s", e)
+            log.warning("PushStore L2 indisponible (%s) — fallback mémoire", e)
             self._client = None
 
     def _init_schema(self):
@@ -56,9 +62,17 @@ class PushStore:
         """)
 
     def add_subscription(self, endpoint: str, p256dh: str, auth: str) -> None:
-        if self._client is None:
-            return
         now = time.time()
+        if self._client is None:
+            with self._lock:
+                self._mem_subs[endpoint] = {
+                    "endpoint": endpoint,
+                    "p256dh": p256dh,
+                    "auth": auth,
+                    "created_at": now,
+                    "last_seen_at": now,
+                }
+            return
         with self._lock:
             self._client.execute(
                 "INSERT OR REPLACE INTO push_subscriptions"
@@ -69,6 +83,8 @@ class PushStore:
 
     def remove_subscription(self, endpoint: str) -> None:
         if self._client is None:
+            with self._lock:
+                self._mem_subs.pop(endpoint, None)
             return
         with self._lock:
             self._client.execute(
@@ -78,7 +94,11 @@ class PushStore:
 
     def list_subscriptions(self) -> list[dict]:
         if self._client is None:
-            return []
+            with self._lock:
+                return [
+                    {"endpoint": s["endpoint"], "p256dh": s["p256dh"], "auth": s["auth"]}
+                    for s in self._mem_subs.values()
+                ]
         with self._lock:
             rs = self._client.execute(
                 "SELECT endpoint, p256dh, auth FROM push_subscriptions"
@@ -89,18 +109,23 @@ class PushStore:
         ]
 
     def mark_notified(self, url: str) -> None:
+        now = time.time()
         if self._client is None:
+            with self._lock:
+                self._mem_notified[url] = now
+                self._mem_last_push = now
             return
         with self._lock:
             self._client.execute(
                 "INSERT OR REPLACE INTO notified_articles(url, notified_at)"
                 " VALUES (?, ?)",
-                (url, time.time()),
+                (url, now),
             )
 
     def is_already_notified(self, url: str) -> bool:
         if self._client is None:
-            return False
+            with self._lock:
+                return url in self._mem_notified
         with self._lock:
             rs = self._client.execute(
                 "SELECT 1 FROM notified_articles WHERE url = ? LIMIT 1",
@@ -112,7 +137,8 @@ class PushStore:
         """Timestamp du dernier mark_notified, ou 0.0 si jamais notifié.
         Sert au cap anti-spam (1 push toutes les 30 min)."""
         if self._client is None:
-            return 0.0
+            with self._lock:
+                return self._mem_last_push
         with self._lock:
             rs = self._client.execute(
                 "SELECT MAX(notified_at) FROM notified_articles"
@@ -121,7 +147,11 @@ class PushStore:
         return float(v) if v is not None else 0.0
 
     def clear_all(self) -> None:
-        """Test helper : vide les deux tables."""
+        """Test helper : vide les deux tables (et le fallback mémoire)."""
+        with self._lock:
+            self._mem_subs.clear()
+            self._mem_notified.clear()
+            self._mem_last_push = 0.0
         if self._client is None:
             return
         with self._lock:
