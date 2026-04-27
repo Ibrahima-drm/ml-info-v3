@@ -17,7 +17,7 @@ services:
       #   ADMIN_TOKEN              — token pour protéger /admin/*
       #   VAPID_PUBLIC_KEY         — clé publique VAPID (b64 url-safe)
       #   VAPID_PRIVATE_KEY        — clé privée VAPID (PEM, multi-lignes)
-      #   VAPID_CONTACT            — mailto:<ton-email> (requis par les push services)
+      #   VAPID_CONTACT            — mailto:ton-email (PAS de chevrons < >, sinon Apple rejette en BadJwtToken)
       # Générer les clés VAPID en local : python scripts/gen_vapid_keys.py
       # Sans SUMMARY_DB_URL, l'app utilise un fichier SQLite local
       # (éphémère sur Render free, juste utile en dev).

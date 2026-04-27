@@ -214,7 +214,11 @@ except ImportError:
 
 
 def _vapid_claims() -> dict:
-    contact = os.environ.get("VAPID_CONTACT", "mailto:admin@example.com")
+    contact = os.environ.get("VAPID_CONTACT", "mailto:admin@example.com").strip()
+    # Apple APNS rejette le format RFC 5322 avec angle brackets
+    # ("mailto:<foo@bar>") en BadJwtToken — on les retire défensivement.
+    if contact.startswith("mailto:<") and contact.endswith(">"):
+        contact = "mailto:" + contact[len("mailto:<"):-1]
     return {"sub": contact}
 
 
