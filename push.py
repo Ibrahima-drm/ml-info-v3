@@ -16,17 +16,21 @@ class PushStore:
     def __init__(self):
         self._lock = threading.Lock()
         self._client = None
+        self.init_error: Optional[str] = None
+        self.init_url: Optional[str] = None
 
         url = os.environ.get("SUMMARY_DB_URL", "file:summaries.db")
         token = os.environ.get("SUMMARY_DB_AUTH_TOKEN") or None
+        self.init_url = url.split("?")[0]
         try:
             import libsql_client
             self._client = libsql_client.create_client_sync(
                 url=url, auth_token=token
             )
             self._init_schema()
-            log.info("PushStore prêt (%s)", url.split("?")[0])
+            log.info("PushStore prêt (%s)", self.init_url)
         except Exception as e:
+            self.init_error = f"{type(e).__name__}: {e}"
             log.warning("PushStore L2 indisponible : %s", e)
             self._client = None
 

@@ -591,7 +591,11 @@ def admin_push_test():
     # Round-trip storage test : on écrit une ligne, on la relit, on la
     # supprime. Permet de distinguer un PushStore._client = None d'un
     # INSERT silencieusement perdu.
-    rt = {"client_alive": push.STORE._client is not None}
+    rt = {
+        "client_alive": push.STORE._client is not None,
+        "init_error": getattr(push.STORE, "init_error", "n/a"),
+        "init_url": getattr(push.STORE, "init_url", "n/a"),
+    }
     try:
         push.STORE.add_subscription("__roundtrip__", "rt-p", "rt-a")
         subs = push.STORE.list_subscriptions()
