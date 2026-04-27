@@ -609,7 +609,8 @@ def admin_push_test():
     return jsonify({"sent": n_sent, "dead_removed": n_dead,
                     "total_subs": len(push.STORE.list_subscriptions()),
                     "subscribe_diag": _SUBSCRIBE_DIAG,
-                    "store_roundtrip": rt})
+                    "store_roundtrip": rt,
+                    "send_errors": list(push.LAST_SEND_ERRORS)})
 
 
 @app.route("/admin/clear-summaries")

@@ -218,19 +218,36 @@ def _vapid_claims() -> dict:
     return {"sub": contact}
 
 
+# Diagnostic : dernière erreur rencontrée par send_push_to_all, exposée via
+# /admin/push/test pour faciliter le debug en prod.
+LAST_SEND_ERRORS: list[dict] = []
+
+
 def send_push_to_all(payload: dict) -> tuple[int, int]:
     """Envoie le payload à toutes les subscriptions stockées.
 
     Returns (nombre envoyés OK, nombre subscriptions mortes supprimées).
     Une subscription qui répond 404/410 est supprimée définitivement.
     """
+    LAST_SEND_ERRORS.clear()
     if webpush is None:
+        LAST_SEND_ERRORS.append({"global": "pywebpush not installed"})
         return 0, 0
 
     private_key = os.environ.get("VAPID_PRIVATE_KEY")
     if not private_key:
+        LAST_SEND_ERRORS.append({"global": "VAPID_PRIVATE_KEY not set"})
         log.warning("VAPID_PRIVATE_KEY non défini — push impossible")
         return 0, 0
+
+    # Pré-flight : on tente de valider le PEM tout de suite pour ne pas
+    # confondre "clé corrompue" et "endpoint mort".
+    LAST_SEND_ERRORS.append({
+        "vapid_key_len": len(private_key),
+        "vapid_key_starts": private_key[:30],
+        "vapid_key_has_newlines": "\n" in private_key,
+        "vapid_contact": os.environ.get("VAPID_CONTACT", "<unset>"),
+    })
 
     n_sent = 0
     n_dead = 0
@@ -251,6 +268,18 @@ def send_push_to_all(payload: dict) -> tuple[int, int]:
             n_sent += 1
         except WebPushException as e:
             status = getattr(getattr(e, "response", None), "status_code", None)
+            body = ""
+            try:
+                body = (getattr(e, "response", None).text or "")[:300]
+            except Exception:
+                pass
+            LAST_SEND_ERRORS.append({
+                "endpoint_host": sub["endpoint"].split("/")[2] if "//" in sub["endpoint"] else "?",
+                "type": "WebPushException",
+                "status": status,
+                "body": body,
+                "msg": str(e)[:300],
+            })
             if status in (404, 410):
                 STORE.remove_subscription(sub["endpoint"])
                 n_dead += 1
@@ -258,6 +287,11 @@ def send_push_to_all(payload: dict) -> tuple[int, int]:
             else:
                 log.warning("Échec push transitoire (%s) : %s", status, e)
         except Exception as e:
+            LAST_SEND_ERRORS.append({
+                "endpoint_host": sub["endpoint"].split("/")[2] if "//" in sub["endpoint"] else "?",
+                "type": type(e).__name__,
+                "msg": str(e)[:300],
+            })
             log.warning("Échec push inattendu : %s", e)
 
     return n_sent, n_dead
