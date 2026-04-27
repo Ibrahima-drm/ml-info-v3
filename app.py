@@ -587,9 +587,25 @@ def admin_push_test():
         "url": "/",
     }
     n_sent, n_dead = push.send_push_to_all(payload)
+
+    # Round-trip storage test : on écrit une ligne, on la relit, on la
+    # supprime. Permet de distinguer un PushStore._client = None d'un
+    # INSERT silencieusement perdu.
+    rt = {"client_alive": push.STORE._client is not None}
+    try:
+        push.STORE.add_subscription("__roundtrip__", "rt-p", "rt-a")
+        subs = push.STORE.list_subscriptions()
+        rt["row_visible_after_insert"] = any(s["endpoint"] == "__roundtrip__" for s in subs)
+        rt["total_after_insert"] = len(subs)
+        push.STORE.remove_subscription("__roundtrip__")
+        rt["error"] = None
+    except Exception as e:
+        rt["error"] = f"{type(e).__name__}: {e}"
+
     return jsonify({"sent": n_sent, "dead_removed": n_dead,
                     "total_subs": len(push.STORE.list_subscriptions()),
-                    "subscribe_diag": _SUBSCRIBE_DIAG})
+                    "subscribe_diag": _SUBSCRIBE_DIAG,
+                    "store_roundtrip": rt})
 
 
 @app.route("/admin/clear-summaries")
