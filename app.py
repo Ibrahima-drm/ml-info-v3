@@ -518,17 +518,50 @@ def push_vapid_public_key():
     return jsonify({"key": key})
 
 
+_SUBSCRIBE_DIAG = {
+    "post_count": 0,
+    "last_body_shape": None,
+    "last_endpoint_host": None,
+    "last_error": None,
+    "last_status": None,
+}
+
+
 @app.route("/api/push/subscribe", methods=["POST"])
 def push_subscribe():
-    body = request.get_json(silent=True) or {}
-    endpoint = body.get("endpoint", "")
-    keys = body.get("keys") or {}
-    p256dh = keys.get("p256dh", "")
-    auth = keys.get("auth", "")
-    if not endpoint or not p256dh or not auth:
-        return jsonify({"error": "endpoint and keys.p256dh and keys.auth required"}), 400
-    push.STORE.add_subscription(endpoint, p256dh, auth)
-    return jsonify({"status": "subscribed"}), 201
+    _SUBSCRIBE_DIAG["post_count"] += 1
+    raw = request.get_data(as_text=True) or ""
+    try:
+        body = request.get_json(silent=True) or {}
+        keys = body.get("keys") or {}
+        _SUBSCRIBE_DIAG["last_body_shape"] = {
+            "endpoint_present": bool(body.get("endpoint")),
+            "raw_len": len(raw),
+            "top_keys": sorted(list(body.keys())) if isinstance(body, dict) else None,
+            "keys_subkeys": sorted(list(keys.keys())) if isinstance(keys, dict) else None,
+        }
+        endpoint = body.get("endpoint", "")
+        if endpoint:
+            try:
+                from urllib.parse import urlparse
+                _SUBSCRIBE_DIAG["last_endpoint_host"] = urlparse(endpoint).hostname
+            except Exception:
+                _SUBSCRIBE_DIAG["last_endpoint_host"] = "unparseable"
+        p256dh = keys.get("p256dh", "")
+        auth = keys.get("auth", "")
+        if not endpoint or not p256dh or not auth:
+            _SUBSCRIBE_DIAG["last_status"] = 400
+            _SUBSCRIBE_DIAG["last_error"] = "missing endpoint/p256dh/auth"
+            return jsonify({"error": "endpoint and keys.p256dh and keys.auth required"}), 400
+        push.STORE.add_subscription(endpoint, p256dh, auth)
+        _SUBSCRIBE_DIAG["last_status"] = 201
+        _SUBSCRIBE_DIAG["last_error"] = None
+        return jsonify({"status": "subscribed"}), 201
+    except Exception as e:
+        _SUBSCRIBE_DIAG["last_status"] = 500
+        _SUBSCRIBE_DIAG["last_error"] = f"{type(e).__name__}: {e}"
+        log.exception("subscribe handler crashed")
+        return jsonify({"error": "internal"}), 500
 
 
 @app.route("/api/push/subscribe", methods=["DELETE"])
@@ -555,7 +588,8 @@ def admin_push_test():
     }
     n_sent, n_dead = push.send_push_to_all(payload)
     return jsonify({"sent": n_sent, "dead_removed": n_dead,
-                    "total_subs": len(push.STORE.list_subscriptions())})
+                    "total_subs": len(push.STORE.list_subscriptions()),
+                    "subscribe_diag": _SUBSCRIBE_DIAG})
 
 
 @app.route("/admin/clear-summaries")
