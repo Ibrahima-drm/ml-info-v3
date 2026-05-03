@@ -167,8 +167,35 @@ STORE = PushStore()
 # Trigger : filtres + sélection de l'article à pousser
 # ----------------------------------------------------------------------
 
-PUSH_SCORE_THRESHOLD = 10
+# Seuils différenciés par catégorie : on filtre sur le score de la
+# catégorie dominante (Article.cat_score), pas sur le score total.
+# Sécurité / infra du quotidien sont les plus urgentes ; sport / climat
+# / régions ne notifient que sur événement fort.
+PUSH_THRESHOLDS: dict[str, int] = {
+    "securite": 8,
+    "politique": 10,
+    "economie": 10,
+    "infrastructure_quotidien": 8,
+    "societe_civile": 12,
+    "education": 12,
+    "sport": 15,
+    "climat_environnement": 12,
+    "regions": 15,
+}
+
+# Fallback pour une catégorie inconnue (ne devrait pas arriver, mais on
+# évite que select_article_to_push crashe si la liste évolue).
+PUSH_DEFAULT_THRESHOLD = 12
+
 PUSH_MIN_INTERVAL_SEC = 30 * 60  # 1 push max toutes les 30 min
+
+
+def _passes_threshold(article) -> bool:
+    """L'article dépasse-t-il le seuil push de sa catégorie dominante ?"""
+    cat = getattr(article, "categorie", "") or ""
+    cat_score = getattr(article, "cat_score", 0) or 0
+    threshold = PUSH_THRESHOLDS.get(cat, PUSH_DEFAULT_THRESHOLD)
+    return cat_score >= threshold
 
 
 def select_article_to_push(articles: list) -> Optional[object]:
@@ -177,9 +204,11 @@ def select_article_to_push(articles: list) -> Optional[object]:
     Filtres dans cet ordre :
       1. liste vide → None
       2. dernier push global < PUSH_MIN_INTERVAL_SEC → None (cap anti-spam)
-      3. score ≥ PUSH_SCORE_THRESHOLD
+      3. cat_score ≥ PUSH_THRESHOLDS[catégorie]
       4. URL pas déjà dans notified_articles
-      5. parmi les survivants, prend le score max
+      5. parmi les survivants, prend celui dont (cat_score - seuil) est max
+         — c.-à-d. le plus "au-dessus" de son seuil propre, pour ne pas
+         systématiquement favoriser la sécurité (seuil bas).
     """
     if not articles:
         return None
@@ -190,13 +219,19 @@ def select_article_to_push(articles: list) -> Optional[object]:
 
     eligible = [
         a for a in articles
-        if getattr(a, "score", 0) >= PUSH_SCORE_THRESHOLD
+        if _passes_threshold(a)
         and getattr(a, "lien", "")
         and not STORE.is_already_notified(a.lien)
     ]
     if not eligible:
         return None
-    return max(eligible, key=lambda a: a.score)
+
+    def _margin(a) -> int:
+        cat = getattr(a, "categorie", "") or ""
+        return (getattr(a, "cat_score", 0) or 0) - PUSH_THRESHOLDS.get(
+            cat, PUSH_DEFAULT_THRESHOLD
+        )
+    return max(eligible, key=_margin)
 
 
 # ----------------------------------------------------------------------

@@ -8,12 +8,24 @@ import pytest
 from push import select_article_to_push, STORE
 
 
-def make_article(score=12, lien="https://example.com/a", titre="Article test"):
-    """Mini Article-like object (juste les attributs lus par le trigger)."""
+def make_article(
+    cat_score=12,
+    categorie="politique",
+    lien="https://example.com/a",
+    titre="Article test",
+    score=None,
+):
+    """Mini Article-like object (juste les attributs lus par le trigger).
+
+    Par défaut on simule un article catégorie 'politique' (seuil push 10),
+    avec cat_score=12 → éligible. Le score total est aligné si non précisé.
+    """
     class A:
         pass
     a = A()
-    a.score = score
+    a.cat_score = cat_score
+    a.categorie = categorie
+    a.score = cat_score if score is None else score
     a.lien = lien
     a.titre = titre
     a.source = "Test Source"
@@ -25,42 +37,59 @@ class TestFilters:
     def test_no_articles_returns_none(self):
         assert select_article_to_push([]) is None
 
-    def test_score_below_threshold_skipped(self):
-        a = make_article(score=9)
+    def test_politique_below_threshold_skipped(self):
+        # politique seuil = 10, cat_score 9 → rejeté
+        a = make_article(cat_score=9, categorie="politique")
         assert select_article_to_push([a]) is None
 
-    def test_score_above_threshold_passes(self):
-        a = make_article(score=10)
-        result = select_article_to_push([a])
-        assert result is a
+    def test_politique_above_threshold_passes(self):
+        a = make_article(cat_score=10, categorie="politique")
+        assert select_article_to_push([a]) is a
+
+    def test_securite_lower_threshold(self):
+        # sécurité seuil = 8 (plus bas que politique)
+        a = make_article(cat_score=8, categorie="securite")
+        assert select_article_to_push([a]) is a
+
+    def test_sport_higher_threshold(self):
+        # sport seuil = 15. cat_score 12 (qui passerait pour politique) rejeté.
+        a = make_article(cat_score=12, categorie="sport")
+        assert select_article_to_push([a]) is None
 
     def test_already_notified_skipped(self):
-        a = make_article(score=15, lien="https://example.com/already")
+        a = make_article(cat_score=15, lien="https://example.com/already")
         STORE.mark_notified(a.lien)
         assert select_article_to_push([a]) is None
 
     def test_recent_push_blocks_all(self, monkeypatch):
         monkeypatch.setattr(STORE, "last_push_at", lambda: time.time() - 5 * 60)
-        a = make_article(score=15)
+        a = make_article(cat_score=15)
         assert select_article_to_push([a]) is None
 
     def test_old_push_does_not_block(self, monkeypatch):
         monkeypatch.setattr(STORE, "last_push_at", lambda: time.time() - 31 * 60)
-        a = make_article(score=15)
+        a = make_article(cat_score=15)
         assert select_article_to_push([a]) is a
 
-    def test_picks_highest_score(self):
-        low = make_article(score=10, lien="https://example.com/low")
-        high = make_article(score=18, lien="https://example.com/high")
-        mid = make_article(score=12, lien="https://example.com/mid")
-        result = select_article_to_push([low, high, mid])
-        assert result is high
+    def test_picks_highest_margin_above_threshold(self):
+        # Margin = cat_score - seuil. On veut le plus "fort" relativement.
+        # securite cat_score 12 → margin 4
+        # politique cat_score 18 → margin 8 (gagne)
+        # economie cat_score 11 → margin 1
+        sec = make_article(cat_score=12, categorie="securite",
+                           lien="https://example.com/sec")
+        pol = make_article(cat_score=18, categorie="politique",
+                           lien="https://example.com/pol")
+        eco = make_article(cat_score=11, categorie="economie",
+                           lien="https://example.com/eco")
+        assert select_article_to_push([sec, pol, eco]) is pol
 
     def test_skips_below_threshold_keeps_above(self):
-        low = make_article(score=8, lien="https://example.com/low")
-        ok = make_article(score=11, lien="https://example.com/ok")
-        result = select_article_to_push([low, ok])
-        assert result is ok
+        low = make_article(cat_score=8, categorie="politique",
+                           lien="https://example.com/low")
+        ok = make_article(cat_score=11, categorie="politique",
+                          lien="https://example.com/ok")
+        assert select_article_to_push([low, ok]) is ok
 
 
 class TestDelivery:
@@ -144,7 +173,7 @@ class TestTrigger:
 
         STORE.add_subscription("https://fcm.example/a", "p", "a")
 
-        a = make_article(score=15, lien="https://example.com/big-news",
+        a = make_article(cat_score=15, lien="https://example.com/big-news",
                          titre="Big news")
         a.source = "Test"
 
@@ -160,7 +189,7 @@ class TestTrigger:
             raise AssertionError("webpush should not be called")
         monkeypatch.setattr("push.webpush", boom)
 
-        a = make_article(score=5)
+        a = make_article(cat_score=5)
         result = trigger_push_for_new_articles([a])
         assert result is None
 
@@ -171,7 +200,7 @@ class TestTrigger:
             raise AssertionError("webpush should not be called")
         monkeypatch.setattr("push.webpush", boom)
 
-        a = make_article(score=12, lien="https://example.com/x")
+        a = make_article(cat_score=12, lien="https://example.com/x")
         result = trigger_push_for_new_articles([a])
         assert result == "https://example.com/x"
         assert STORE.is_already_notified("https://example.com/x") is True

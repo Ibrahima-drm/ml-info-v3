@@ -50,9 +50,28 @@ SOURCES: dict[str, str] = {
     "Journal du Mali":    "https://www.journaldumali.com/feed/",
     "Bamada":             "https://bamada.net/feed",
     "MaliJet":            "https://malijet.com/feed",
-    # International
+    "L'Essor":            "https://lessormali.com/feed/",
+    "Mali Actu":          "https://maliactu.net/feed/",
+    "22 Septembre":       "https://www.22septembre.com/feed/",
+    "Nord Sud Journal":   "https://nordsudjournal.com/feed/",
+    "Phileingora":        "https://phileingora.com/feed/",
+    # Régionaux / Sahel (transfrontalier AES)
+    "Sahel Intelligence": "https://sahel-intelligence.com/feed/",
+    "Wakat Séra":         "https://www.wakatsera.com/feed/",
+    "ActuNiger":          "https://www.actuniger.com/feed/",
+    "Crisis Group":       "https://www.crisisgroup.org/rss",
+    # Agences internationales
+    "VOA Afrique":        "https://www.voaafrique.com/api/zmgqoe$omv",
+    "DW Afrique":         "https://rss.dw.com/rdf/rss-fr-afri",
+    "TV5 Monde Afrique":  "https://information.tv5monde.com/rss/afrique",
+    "APA News":           "https://apanews.net/feed/",
+    "Anadolu Afrique":    "https://www.aa.com.tr/fr/rss/default?cat=afrique",
+    # International (panafricain anglo)
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/africa.xml",
     "Africanews":         "https://fr.africanews.com/feed/rss",
+    # Sport
+    "Mali Foot":          "https://www.malifoot.net/feed/",
+    "Africa Top Sports":  "https://www.africatopsports.com/feed/",
 }
 
 KEYWORDS: dict[str, list[tuple[str, int]]] = {
@@ -69,6 +88,25 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("affrontement", 3), ("assaut", 3), ("frappe", 3),
         ("enlèvement", 3), ("kidnapping", 4), ("otage", 4),
         ("coup d'etat", 4), ("putsch", 4),
+        # Chefs jihadistes
+        ("iyad ag ghali", 5), ("amadou koufa", 5),
+        ("abou oubeida", 4), ("abou houzeifa", 4),
+        # Groupes / mouvements
+        ("macina", 4), ("katiba macina", 5), ("ansar dine", 4),
+        ("mnla", 4), ("cma", 4), ("gatia", 3), ("plateforme", 3), ("dna", 3),
+        # Lieux de conflit
+        ("tinzaouatène", 5), ("in-khalil", 5), ("anefis", 4), ("agouni", 4),
+        ("andéramboukane", 4), ("farabougou", 5), ("ogossagou", 4),
+        ("moura", 4), ("diallassagou", 4), ("bounti", 4),
+        # Opérations militaires
+        ("opération maliko", 4), ("opération keletigui", 4),
+        # Matériel
+        ("drone bayraktar", 3), ("akinci", 3), ("su-25", 3), ("hélicoptère", 2),
+        # Acteurs externes
+        ("russe", 2), ("russie", 2), ("turc", 2), ("iranien", 3),
+        # Exactions / droits humains
+        ("exaction", 4), ("charnier", 5), ("civils tués", 4),
+        ("hrw", 3), ("human rights watch", 3), ("amnesty", 3), ("fidh", 3),
     ],
     "politique": [
         ("goita", 3), ("assimi", 3), ("transition", 2),
@@ -77,6 +115,25 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("constitution", 2), ("référendum", 3),
         ("cedeao", 3), ("ecowas", 3), ("uemoa", 2),
         ("ambassadeur", 2), ("diplomatie", 2),
+        # Figures du gouvernement
+        ("choguel maïga", 3), ("abdoulaye maïga", 3), ("sadio camara", 2),
+        ("ismaël wagué", 3), ("abdoulaye diop", 3), ("alousseni sanou", 3),
+        # Opposition / société politique
+        ("mahmoud dicko", 4), ("oumar mariko", 3), ("modibo sidibé", 3),
+        ("soumeylou boubèye", 3), ("m5-rfp", 3), ("moussa mara", 3),
+        # Institutions
+        ("aige", 3), ("autorité indépendante de gestion des élections", 4),
+        ("haut conseil islamique", 3), ("hci", 3),
+        # Concepts processus de transition
+        ("refondation", 3), ("charte de la transition", 3),
+        ("recensement électoral", 3), ("rave", 2),
+        ("fichier électoral", 3), ("assises nationales", 3),
+        # Diplomatie
+        ("niamey", 2), ("ouagadougou", 2), ("conakry", 2),
+        ("abuja", 2), ("addis-abeba", 2),
+        ("lavrov", 3), ("poutine", 2), ("erdogan", 2),
+        # Sanctions / institutions financières
+        ("sanctions", 3), ("embargo", 3), ("fmi", 2), ("banque mondiale", 2),
     ],
     "economie": [
         ("économie", 2), ("franc cfa", 3), ("eco", 1),
@@ -84,6 +141,21 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("or", 1), ("orpaillage", 3), ("mine", 2),
         ("coton", 2), ("agriculture", 1),
         ("électricité", 2), ("edm", 3), ("carburant", 3),
+        # Mines / matières premières
+        ("barrick", 4), ("b2gold", 4), ("allied gold", 3), ("hummingbird", 3),
+        ("fékola", 4), ("loulo", 4), ("gounkoto", 4), ("syama", 4), ("morila", 4),
+        ("prix de l'or", 3), ("lithium", 3),
+        # Énergie
+        ("manantali", 4), ("sotuba", 3), ("kayo", 3),
+        # Télécoms
+        ("orange mali", 2), ("malitel", 3), ("moov africa", 2), ("sotelma", 2),
+        # Banques
+        ("bms", 2), ("bdm", 2), ("bnda", 2),
+        ("ecobank mali", 2), ("bsic", 2),
+        # Transport
+        ("aéroport modibo keita", 3), ("sénou", 2), ("dakar-bamako rail", 3),
+        # Agriculture
+        ("office du niger", 4), ("mil", 1), ("sorgho", 1), ("bétail", 1),
     ],
     "regions": [
         ("mali", 5), ("malien", 4), ("malienne", 4),
@@ -91,12 +163,57 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("tombouctou", 5), ("mopti", 5), ("ségou", 4), ("sikasso", 4),
         ("kayes", 4), ("koulikoro", 3), ("taoudéni", 4), ("ménaka", 5),
         ("azawad", 5),
+        # Cercles supplémentaires
+        ("nara", 4), ("bandiagara", 5), ("niono", 4), ("koutiala", 4),
+        ("bougouni", 4), ("kati", 4), ("kolokani", 3), ("dioïla", 3),
+        ("banamba", 3), ("koro", 4), ("douentza", 5), ("tessalit", 5),
+        ("abeibara", 4), ("achouratt", 4), ("ber", 4),
+        # Ethnies / communautés linguistiques
+        ("dogon", 3), ("peulh", 3), ("touareg", 3),
+        ("songhaï", 3), ("bambara", 2), ("sonrhaï", 3),
+    ],
+    "sport": [
+        ("aigles du mali", 5), ("aigles", 4), ("équipe nationale", 3),
+        ("mali u23", 4), ("mali u20", 4),
+        ("éliminatoires can", 3), ("can 2025", 4), ("can 2027", 3),
+        ("coupe du monde", 3), ("chan", 3),
+        ("fémafoot", 4), ("femafoot", 4),
+        ("stade du 26 mars", 3), ("stade modibo keïta", 3),
+        ("afrobasket", 3), ("basket mali", 3),
+    ],
+    "societe_civile": [
+        ("ong", 2), ("société civile", 3), ("syndicat", 2),
+        ("untm", 3), ("grève", 3), ("manifestation", 3),
+    ],
+    "education": [
+        ("bac", 2), ("baccalauréat", 3),
+        ("def", 3), ("diplôme d'études fondamentales", 3),
+        ("université", 2), ("usttb", 3), ("ulshb", 3),
+        ("grève des enseignants", 4), ("syndicat enseignant", 3),
+        ("untm-éducation", 3),
+        ("rentrée scolaire", 3), ("année scolaire", 2),
+    ],
+    "climat_environnement": [
+        ("sécheresse", 3), ("inondation", 4),
+        ("crue du niger", 4), ("fleuve niger", 2), ("bani", 2),
+        ("déforestation", 2), ("désertification", 3),
+        ("changement climatique", 2), ("cop", 1),
+    ],
+    "infrastructure_quotidien": [
+        ("délestage", 4), ("pénurie carburant", 4), ("gaz domestique", 3),
+        ("aéroport modibo keita", 3), ("sénou", 2),
+        ("bitumage", 2), ("route bamako", 2), ("pont", 1),
+        ("sotrama", 2), ("transport urbain", 2),
     ],
 }
 
-# Termes "ancres" : un article est gardé UNIQUEMENT si au moins un de
-# ces termes apparaît. Ça garantit que l'article parle bien du Mali et
+# Termes "ancres" : un article est gardé UNIQUEMENT si au moins une
+# ancre matche. Le filtre garantit que l'article parle bien du Mali et
 # pas seulement du Sahel ou d'un pays voisin.
+#
+# Deux niveaux : MALI_ANCHORS (géographiques, valides pour toutes les
+# catégories) et CATEGORY_ANCHORS (spécifiques — ex. "fémafoot" ancre
+# un article sport sans qu'il ait à mentionner "Mali" en clair).
 MALI_ANCHORS: set[str] = {
     "mali", "malien", "malienne", "maliens", "maliennes",
     "bamako", "kidal", "gao", "tombouctou", "mopti", "segou",
@@ -104,6 +221,40 @@ MALI_ANCHORS: set[str] = {
     "azawad", "fama", "forces armees maliennes",
     "goita", "assimi goita", "edm", "energie du mali",
 }
+
+CATEGORY_ANCHORS: dict[str, set[str]] = {
+    "politique": {
+        "choguel maïga", "abdoulaye maïga", "sadio camara",
+        "mahmoud dicko", "moussa mara", "soumeylou boubèye",
+        "modibo sidibé", "oumar mariko", "m5-rfp",
+    },
+    "economie": {
+        "fékola", "loulo", "gounkoto", "syama", "morila",
+        "office du niger", "manantali", "edm",
+    },
+    "sport": {
+        "aigles du mali", "fémafoot", "femafoot",
+        "stade du 26 mars", "stade modibo keïta",
+    },
+    "societe_civile": {"untm"},
+    "education": {"usttb", "ulshb", "def", "untm-éducation"},
+    "infrastructure_quotidien": {"edm", "sénou", "sotrama"},
+    "climat_environnement": {"crue du niger", "fleuve niger", "bani"},
+}
+
+# Set aplati de toutes les ancres acceptables (géo + toutes catégories),
+# normalisé une seule fois au load.
+_ALL_ANCHORS: set[str] = set(MALI_ANCHORS)
+for _anchors in CATEGORY_ANCHORS.values():
+    _ALL_ANCHORS.update(_anchors)
+
+# Ordre de priorité pour départager les égalités sur la catégorie dominante.
+# Les catégories en tête ont priorité quand deux scores sont identiques.
+CATEGORY_PRIORITY: list[str] = [
+    "securite", "politique", "economie",
+    "societe_civile", "infrastructure_quotidien", "education",
+    "sport", "climat_environnement", "regions",
+]
 
 CACHE: dict = {"data": [], "timestamp": 0.0}
 CACHE_DURATION = 180
@@ -139,6 +290,7 @@ class Article:
     timestamp: float
     categorie: str
     score: int
+    cat_score: int  # score de la catégorie dominante (utilisé par PUSH_THRESHOLDS)
 
 # ----------------------------------------------------------------------
 # Utilitaires texte
@@ -168,17 +320,22 @@ def normalize(s: str) -> str:
         s = s.replace(a, b)
     return s
 
-def score_article(title: str, desc: str) -> tuple[int, str]:
+def score_article(title: str, desc: str) -> tuple[int, str, int]:
+    """Renvoie (score_total, catégorie_dominante, score_catégorie_dominante).
+
+    Filtre d'ancrage : l'article doit matcher au moins un terme dans
+    `_ALL_ANCHORS` (géo Mali OU ancres catégorie). Sinon (0, "", 0).
+    """
     text = normalize(f"{title} {desc}")
     if not text:
-        return 0, ""
+        return 0, "", 0
 
-    has_mali_anchor = any(
+    has_anchor = any(
         re.search(r"\b" + re.escape(normalize(a)) + r"\b", text)
-        for a in MALI_ANCHORS
+        for a in _ALL_ANCHORS
     )
-    if not has_mali_anchor:
-        return 0, ""
+    if not has_anchor:
+        return 0, "", 0
 
     cat_scores: dict[str, int] = {}
     for cat, kws in KEYWORDS.items():
@@ -193,12 +350,18 @@ def score_article(title: str, desc: str) -> tuple[int, str]:
             cat_scores[cat] = s
 
     if not cat_scores:
-        return 0, ""
+        return 0, "", 0
 
     total = sum(cat_scores.values())
-    priority = ["securite", "politique", "economie", "regions"]
-    cat = max(cat_scores, key=lambda c: (cat_scores[c], -priority.index(c)))
-    return total, cat
+    # Tie-break : score le plus haut, puis ordre dans CATEGORY_PRIORITY.
+    # Une cat absente de la liste tombe en queue (index = len(priority)).
+    def _prio(c: str) -> int:
+        try:
+            return CATEGORY_PRIORITY.index(c)
+        except ValueError:
+            return len(CATEGORY_PRIORITY)
+    cat = max(cat_scores, key=lambda c: (cat_scores[c], -_prio(c)))
+    return total, cat, cat_scores[cat]
 
 def parse_one_feed(source: str, url: str) -> list[Article]:
     out: list[Article] = []
@@ -223,7 +386,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 getattr(entry, "summary", "") or getattr(entry, "description", "")
             )
 
-            score, categorie = score_article(title, description)
+            score, categorie, cat_score = score_article(title, description)
             if score < 4:
                 continue
 
@@ -249,6 +412,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 timestamp=dt.timestamp(),
                 categorie=categorie,
                 score=score,
+                cat_score=cat_score,
             ))
     except Exception as e:
         log.exception("Erreur sur %s : %s", source, e)
