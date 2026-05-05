@@ -50,11 +50,11 @@ SOURCES: dict[str, str] = {
     "Journal du Mali":    "https://www.journaldumali.com/feed/",
     "Bamada":             "https://bamada.net/feed",
     "MaliJet":            "https://malijet.com/feed",
-    "L'Essor":            "https://lessormali.com/feed/",
     "Mali Actu":          "https://maliactu.net/feed/",
     "22 Septembre":       "https://www.22septembre.com/feed/",
     "Nord Sud Journal":   "https://nordsudjournal.com/feed/",
     "Phileingora":        "https://phileingora.com/feed/",
+    # L'Essor (lessormali.com) retiré : serveur injoignable depuis Render.
     # Régionaux / Sahel (transfrontalier AES)
     "Sahel Intelligence": "https://sahel-intelligence.com/feed/",
     "Wakat Séra":         "https://www.wakatsera.com/feed/",
@@ -260,8 +260,8 @@ CACHE: dict = {"data": [], "timestamp": 0.0}
 CACHE_DURATION = 180
 MAX_AGE_DAYS = 7
 MAX_ARTICLES = 80
-REQUEST_TIMEOUT = 4
-USER_AGENT = "ML_INFO/3.0"
+REQUEST_TIMEOUT = 6
+USER_AGENT = "Mozilla/5.0 (compatible; ML-Info/3.0; +https://ml-info.onrender.com)"
 
 # Borne tous les appels urllib (utilisés par feedparser) à REQUEST_TIMEOUT secondes
 # pour éviter qu'une source hang fasse traîner tout le pool.
@@ -476,7 +476,7 @@ def _do_fetch() -> list[Article]:
     t0 = time.time()
     all_articles: list[Article] = []
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=12) as pool:
         futures = {
             pool.submit(parse_one_feed, name, url): name
             for name, url in SOURCES.items()
@@ -484,7 +484,7 @@ def _do_fetch() -> list[Article]:
         # Timeout global : on attend max GLOBAL_TIMEOUT puis on prend ce qu'on a.
         # Si as_completed lève TimeoutError, on récupère quand même les futures
         # qui ont fini, et on jette les autres.
-        global_timeout = REQUEST_TIMEOUT * 3
+        global_timeout = REQUEST_TIMEOUT * 4
         try:
             for fut in as_completed(futures, timeout=global_timeout):
                 try:
