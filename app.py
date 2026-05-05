@@ -23,6 +23,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 
 import summary as summarizer
 import push
+import translate
 
 # ----------------------------------------------------------------------
 # Configuration
@@ -69,6 +70,14 @@ SOURCES: dict[str, str] = {
     # International (panafricain anglo)
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",  # africa.xml retourne 404, all.xml est filtré par keywords
     "Africanews":         "https://fr.africanews.com/feed/rss",
+}
+
+# Sources servies en anglais : on traduit titre + description avant
+# scoring/affichage. Les autres flux internationaux (BBC Afrique,
+# Africanews, Anadolu, Crisis Group fr, etc.) sont déjà en français.
+SOURCES_EN: set[str] = {
+    "Al Jazeera Africa",
+    "Crisis Group",
 }
 
 KEYWORDS: dict[str, list[tuple[str, int]]] = {
@@ -375,6 +384,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
         diag["raw"] = len(flux.entries)
         cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
 
+        is_en_source = source in SOURCES_EN
         for entry in flux.entries[:80]:
             title = getattr(entry, "title", "").strip()
             if not title:
@@ -385,6 +395,10 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 getattr(entry, "summary", "") or getattr(entry, "description", "")
             )
 
+            # Pour les sources EN, le score est calculé sur le texte original
+            # car les ancres "Mali"/"Bamako"/"Goïta" et les noms propres
+            # s'écrivent pareil en EN. Ça évite de payer Claude pour 95%
+            # d'articles qu'on filtrera ensuite.
             score, categorie, cat_score = score_article(title, description)
             if score < 4:
                 diag["low_score"] += 1
@@ -403,10 +417,18 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 diag["too_old"] += 1
                 continue
 
+            link = getattr(entry, "link", "")
+            if is_en_source:
+                # Fallback transparent : si Claude rate, translate_en_to_fr
+                # renvoie l'original — l'article passe quand même.
+                title, description = translate.translate_en_to_fr(
+                    link, title, description
+                )
+
             out.append(Article(
                 source=source,
                 titre=title,
-                lien=getattr(entry, "link", ""),
+                lien=link,
                 description=description[:400],
                 date_iso=dt.isoformat(),
                 date_affichee=dt.astimezone().strftime("%d/%m/%Y • %H:%M"),
@@ -667,6 +689,8 @@ def health():
         "claude_enabled": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "anthropic_sdk_installed": anthropic_sdk,
         "claude_last_call": summarizer.LAST_CLAUDE_STATUS,
+        "cached_translations": len(translate.STORE),
+        "translate_last_call": translate.LAST_CLAUDE_STATUS,
         "push_subscriptions": len(push.STORE.list_subscriptions()),
         "push_vapid_configured": bool(os.environ.get("VAPID_PRIVATE_KEY")),
     })
