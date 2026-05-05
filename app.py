@@ -260,7 +260,7 @@ CACHE: dict = {"data": [], "timestamp": 0.0}
 CACHE_DURATION = 180
 MAX_AGE_DAYS = 7
 MAX_ARTICLES = 80
-REQUEST_TIMEOUT = 6
+REQUEST_TIMEOUT = 8
 USER_AGENT = "Mozilla/5.0 (compatible; ML-Info/3.0; +https://ml-info.onrender.com)"
 
 # Borne tous les appels urllib (utilisés par feedparser) à REQUEST_TIMEOUT secondes
@@ -274,6 +274,11 @@ PREFETCH_WORKERS = 2
 # en parallèle (déclencheur stale-while-revalidate)
 _refresh_lock = threading.Lock()
 _refreshing = {"flag": False}
+
+# Diagnostic du dernier fetch, par source : status, raw_entries, kept, error.
+# Mis à jour par parse_one_feed() et _do_fetch(). Exposé via /admin/sources/diag.
+_LAST_FETCH_DIAG: dict[str, dict] = {}
+_LAST_FETCH_DIAG_LOCK = threading.Lock()
 
 # ----------------------------------------------------------------------
 # Modèle
@@ -365,6 +370,8 @@ def score_article(title: str, desc: str) -> tuple[int, str, int]:
 
 def parse_one_feed(source: str, url: str) -> list[Article]:
     out: list[Article] = []
+    t0 = time.time()
+    diag: dict = {"raw": 0, "low_score": 0, "too_old": 0, "no_title": 0, "error": None}
     try:
         flux = feedparser.parse(
             url,
@@ -373,13 +380,16 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
         )
         if flux.bozo and not flux.entries:
             log.warning("Flux invalide %s : %s", source, flux.bozo_exception)
+            diag["error"] = f"bozo: {flux.bozo_exception}"
             return out
 
+        diag["raw"] = len(flux.entries)
         cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
 
         for entry in flux.entries[:30]:
             title = getattr(entry, "title", "").strip()
             if not title:
+                diag["no_title"] += 1
                 continue
 
             description = clean_text(
@@ -388,6 +398,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
 
             score, categorie, cat_score = score_article(title, description)
             if score < 4:
+                diag["low_score"] += 1
                 continue
 
             ts_struct = (
@@ -400,6 +411,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 dt = datetime.now(timezone.utc)
 
             if dt < cutoff:
+                diag["too_old"] += 1
                 continue
 
             out.append(Article(
@@ -416,6 +428,12 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
             ))
     except Exception as e:
         log.exception("Erreur sur %s : %s", source, e)
+        diag["error"] = f"{type(e).__name__}: {e}"
+    finally:
+        diag["kept"] = len(out)
+        diag["elapsed_ms"] = int((time.time() - t0) * 1000)
+        with _LAST_FETCH_DIAG_LOCK:
+            _LAST_FETCH_DIAG[source] = diag
     return out
 
 def dedup(articles: Iterable[Article]) -> list[Article]:
@@ -476,7 +494,10 @@ def _do_fetch() -> list[Article]:
     t0 = time.time()
     all_articles: list[Article] = []
 
-    with ThreadPoolExecutor(max_workers=12) as pool:
+    with _LAST_FETCH_DIAG_LOCK:
+        _LAST_FETCH_DIAG.clear()
+
+    with ThreadPoolExecutor(max_workers=20) as pool:
         futures = {
             pool.submit(parse_one_feed, name, url): name
             for name, url in SOURCES.items()
@@ -504,6 +525,15 @@ def _do_fetch() -> list[Article]:
                         pass
                 else:
                     fut.cancel()
+                    name = futures[fut]
+                    with _LAST_FETCH_DIAG_LOCK:
+                        if name not in _LAST_FETCH_DIAG:
+                            _LAST_FETCH_DIAG[name] = {
+                                "raw": 0, "kept": 0, "low_score": 0,
+                                "too_old": 0, "no_title": 0,
+                                "error": "global_timeout",
+                                "elapsed_ms": int((time.time() - t0) * 1000),
+                            }
 
     all_articles = dedup(all_articles)
     all_articles.sort(key=lambda x: (x.timestamp, x.score), reverse=True)
@@ -785,6 +815,32 @@ def clear_summaries():
         return auth_err
     n = summarizer.CACHE.clear()
     return jsonify({"cleared": n})
+
+
+@app.route("/admin/sources/diag")
+def admin_sources_diag():
+    """Renvoie le diag par source du dernier fetch.
+
+    Pour chaque source : raw (entrées brutes), kept (gardées après filtres),
+    low_score / too_old / no_title (drops), error, elapsed_ms.
+    `?refresh=1` force un fetch synchrone neuf avant de renvoyer.
+    """
+    auth_err = _require_admin_token()
+    if auth_err is not None:
+        return auth_err
+    if request.args.get("refresh") == "1":
+        _do_fetch()
+    with _LAST_FETCH_DIAG_LOCK:
+        diag = dict(_LAST_FETCH_DIAG)
+    silent = sorted(
+        name for name in SOURCES if name not in diag
+    )
+    return jsonify({
+        "sources_total": len(SOURCES),
+        "sources_with_diag": len(diag),
+        "never_returned": silent,
+        "by_source": diag,
+    })
 
 # Service worker servi à la racine pour intercepter tout le scope.
 @app.route("/sw.js")
