@@ -312,15 +312,20 @@ def normalize(s: str) -> str:
 def score_article(title: str, desc: str) -> tuple[int, str, int]:
     """Renvoie (score_total, catégorie_dominante, score_catégorie_dominante).
 
-    Filtre d'ancrage : l'article doit matcher au moins un terme dans
-    `_ALL_ANCHORS` (géo Mali OU ancres catégorie). Sinon (0, "", 0).
+    Filtre d'ancrage : le **titre** de l'article doit matcher au moins un
+    terme dans `_ALL_ANCHORS`. On ignore le corps pour ce check parce que
+    certains agrégateurs (ex. Mali Actu) collent "Mali" dans les tags
+    de fin d'article même quand le sujet est ailleurs (UEMOA, Trump…),
+    ce qui faisait passer des articles hors-sujet.
+    Le scoring lui-même continue d'utiliser titre + description.
     """
+    title_norm = normalize(title)
     text = normalize(f"{title} {desc}")
     if not text:
         return 0, "", 0
 
     has_anchor = any(
-        re.search(r"\b" + re.escape(normalize(a)) + r"\b", text)
+        re.search(r"\b" + re.escape(normalize(a)) + r"\b", title_norm)
         for a in _ALL_ANCHORS
     )
     if not has_anchor:
