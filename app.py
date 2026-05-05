@@ -12,12 +12,14 @@ import re
 import socket
 import threading
 import time
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, timezone
 from time import mktime
 from typing import Iterable
 
+from dateutil import parser as date_parser
 import feedparser
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -366,6 +368,45 @@ def score_article(title: str, desc: str) -> tuple[int, str, int]:
     cat = max(cat_scores, key=lambda c: (cat_scores[c], -_prio(c)))
     return total, cat, cat_scores[cat]
 
+
+# Cache "première fois qu'on a vu cette URL" pour les articles dont la
+# date publiée n'est pas parseable (ex. Crisis Group qui sert "Friday,
+# May 1, 2026 - 19:07" — feedparser ne sait pas faire). Sans ce cache
+# on retombait sur datetime.now() à chaque fetch, ce qui faisait
+# remonter l'article au sommet et le marquait "à l'instant" en boucle.
+_FIRST_SEEN: OrderedDict[str, datetime] = OrderedDict()
+_FIRST_SEEN_LOCK = threading.Lock()
+_FIRST_SEEN_CAP = 500
+
+
+def _parse_date_fallback(raw: str, link: str) -> datetime:
+    """Date la plus crédible quand feedparser n'a pas su faire.
+
+    1. Tente dateutil sur la string `published`/`updated` brute.
+    2. Sinon : retourne la date du premier passage de cette URL chez
+       nous (cache mémoire), pour que la position de l'article soit
+       stable entre fetches.
+    """
+    if raw:
+        try:
+            dt = date_parser.parse(raw)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except (ValueError, TypeError, OverflowError):
+            pass
+    with _FIRST_SEEN_LOCK:
+        existing = _FIRST_SEEN.get(link)
+        if existing is not None:
+            _FIRST_SEEN.move_to_end(link)
+            return existing
+        now = datetime.now(timezone.utc)
+        _FIRST_SEEN[link] = now
+        while len(_FIRST_SEEN) > _FIRST_SEEN_CAP:
+            _FIRST_SEEN.popitem(last=False)
+        return now
+
+
 def parse_one_feed(source: str, url: str) -> list[Article]:
     out: list[Article] = []
     t0 = time.time()
@@ -404,6 +445,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 diag["low_score"] += 1
                 continue
 
+            link = getattr(entry, "link", "")
             ts_struct = (
                 getattr(entry, "published_parsed", None)
                 or getattr(entry, "updated_parsed", None)
@@ -411,13 +453,16 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
             if ts_struct:
                 dt = datetime.fromtimestamp(mktime(ts_struct), tz=timezone.utc)
             else:
-                dt = datetime.now(timezone.utc)
+                dt = _parse_date_fallback(
+                    getattr(entry, "published", "")
+                    or getattr(entry, "updated", ""),
+                    link,
+                )
 
             if dt < cutoff:
                 diag["too_old"] += 1
                 continue
 
-            link = getattr(entry, "link", "")
             if is_en_source:
                 # Fallback transparent : si Claude rate, translate_en_to_fr
                 # renvoie l'original — l'article passe quand même.
