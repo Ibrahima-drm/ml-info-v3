@@ -69,9 +69,6 @@ SOURCES: dict[str, str] = {
     # International (panafricain anglo)
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",  # africa.xml retourne 404, all.xml est filtré par keywords
     "Africanews":         "https://fr.africanews.com/feed/rss",
-    # Sport
-    "Mali Foot":          "https://www.malifoot.net/feed/",       # FIXME DNS ne résout pas
-    "Africa Top Sports":  "https://www.africatopsports.com/feed/",
 }
 
 KEYWORDS: dict[str, list[tuple[str, int]]] = {
@@ -172,15 +169,6 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
         ("dogon", 3), ("peulh", 3), ("touareg", 3),
         ("songhaï", 3), ("bambara", 2), ("sonrhaï", 3),
     ],
-    "sport": [
-        ("aigles du mali", 5), ("aigles", 4), ("équipe nationale", 3),
-        ("mali u23", 4), ("mali u20", 4),
-        ("éliminatoires can", 3), ("can 2025", 4), ("can 2027", 3),
-        ("coupe du monde", 3), ("chan", 3),
-        ("fémafoot", 4), ("femafoot", 4),
-        ("stade du 26 mars", 3), ("stade modibo keïta", 3),
-        ("afrobasket", 3), ("basket mali", 3),
-    ],
     "societe_civile": [
         ("ong", 2), ("société civile", 3), ("syndicat", 2),
         ("untm", 3), ("grève", 3), ("manifestation", 3),
@@ -212,8 +200,8 @@ KEYWORDS: dict[str, list[tuple[str, int]]] = {
 # pas seulement du Sahel ou d'un pays voisin.
 #
 # Deux niveaux : MALI_ANCHORS (géographiques, valides pour toutes les
-# catégories) et CATEGORY_ANCHORS (spécifiques — ex. "fémafoot" ancre
-# un article sport sans qu'il ait à mentionner "Mali" en clair).
+# catégories) et CATEGORY_ANCHORS (spécifiques — ex. "fékola" ancre
+# un article économie sans qu'il ait à mentionner "Mali" en clair).
 MALI_ANCHORS: set[str] = {
     "mali", "malien", "malienne", "maliens", "maliennes",
     "bamako", "kidal", "gao", "tombouctou", "mopti", "segou",
@@ -232,10 +220,6 @@ CATEGORY_ANCHORS: dict[str, set[str]] = {
         "fékola", "loulo", "gounkoto", "syama", "morila",
         "office du niger", "manantali", "edm",
     },
-    "sport": {
-        "aigles du mali", "fémafoot", "femafoot",
-        "stade du 26 mars", "stade modibo keïta",
-    },
     "societe_civile": {"untm"},
     "education": {"usttb", "ulshb", "def", "untm-éducation"},
     "infrastructure_quotidien": {"edm", "sénou", "sotrama"},
@@ -253,7 +237,7 @@ for _anchors in CATEGORY_ANCHORS.values():
 CATEGORY_PRIORITY: list[str] = [
     "securite", "politique", "economie",
     "societe_civile", "infrastructure_quotidien", "education",
-    "sport", "climat_environnement", "regions",
+    "climat_environnement", "regions",
 ]
 
 CACHE: dict = {"data": [], "timestamp": 0.0}
