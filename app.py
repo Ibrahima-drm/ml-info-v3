@@ -42,35 +42,35 @@ SOURCES: dict[str, str] = {
     "France 24 Afrique":  "https://www.france24.com/fr/afrique/rss",
     "Le Monde Afrique":   "https://www.lemonde.fr/afrique/rss_full.xml",
     "Le Monde Sahel":     "https://www.lemonde.fr/sahel/rss_full.xml",
-    "Jeune Afrique":      "https://www.jeuneafrique.com/rss/afrique/",
+    "Jeune Afrique":      "https://www.jeuneafrique.com/feed/",  # /rss/afrique/ retournait 404
     "BBC Afrique":        "https://www.bbc.com/afrique/index.xml",
     # Maliens
     "Studio Tamani":      "https://www.studiotamani.org/feed/",
-    "Mali Web":           "https://www.maliweb.net/feed/",
+    "Mali Web":           "https://www.maliweb.net/feed/",        # FIXME feed sert du HTML, à retravailler (scrape ou RSSHub)
     "Journal du Mali":    "https://www.journaldumali.com/feed/",
     "Bamada":             "https://bamada.net/feed",
-    "MaliJet":            "https://malijet.com/feed",
+    "MaliJet":            "https://malijet.com/feed",             # FIXME idem Mali Web : HTML servi à la place du RSS
     "Mali Actu":          "https://maliactu.net/feed/",
-    "22 Septembre":       "https://www.22septembre.com/feed/",
-    "Nord Sud Journal":   "https://nordsudjournal.com/feed/",
-    "Phileingora":        "https://phileingora.com/feed/",
+    "22 Septembre":       "https://www.22septembre.com/feed/",    # FIXME DNS ne résout pas (Errno -2)
+    "Nord Sud Journal":   "https://nordsudjournal.com/feed/",     # FIXME Errno 101 Network unreachable
+    "Phileingora":        "https://phileingora.com/feed/",        # FIXME DNS ne résout pas
     # L'Essor (lessormali.com) retiré : serveur injoignable depuis Render.
     # Régionaux / Sahel (transfrontalier AES)
     "Sahel Intelligence": "https://sahel-intelligence.com/feed/",
     "Wakat Séra":         "https://www.wakatsera.com/feed/",
-    "ActuNiger":          "https://www.actuniger.com/feed/",
+    "ActuNiger":          "https://www.actuniger.com/feed/",      # FIXME feedburner brisé (titres sans nom de feed)
     "Crisis Group":       "https://www.crisisgroup.org/rss",
     # Agences internationales
-    "VOA Afrique":        "https://www.voaafrique.com/api/zmgqoe$omv",
-    "DW Afrique":         "https://rss.dw.com/rdf/rss-fr-afri",
-    "TV5 Monde Afrique":  "https://information.tv5monde.com/rss/afrique",
-    "APA News":           "https://apanews.net/feed/",
+    "VOA Afrique":        "https://www.voaafrique.com/api/epiqq",  # ancienne URL "zmgqoe$omv" était 404
+    "DW Afrique":         "https://rss.dw.com/rdf/rss-fr-afri",   # FIXME "no feed by that name", DW a renommé tous ses flux
+    "TV5 Monde Afrique":  "https://information.tv5monde.com/rss.xml",  # global (afrique-only retourne 404), keywords filtrent
+    "APA News":           "https://apanews.net/feed/",            # FIXME bloqué par Cloudflare (challenge anti-bot)
     "Anadolu Afrique":    "https://www.aa.com.tr/fr/rss/default?cat=afrique",
     # International (panafricain anglo)
-    "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/africa.xml",
+    "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",  # africa.xml retourne 404, all.xml est filtré par keywords
     "Africanews":         "https://fr.africanews.com/feed/rss",
     # Sport
-    "Mali Foot":          "https://www.malifoot.net/feed/",
+    "Mali Foot":          "https://www.malifoot.net/feed/",       # FIXME DNS ne résout pas
     "Africa Top Sports":  "https://www.africatopsports.com/feed/",
 }
 
