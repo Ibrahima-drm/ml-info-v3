@@ -386,7 +386,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
         diag["raw"] = len(flux.entries)
         cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
 
-        for entry in flux.entries[:30]:
+        for entry in flux.entries[:80]:
             title = getattr(entry, "title", "").strip()
             if not title:
                 diag["no_title"] += 1
