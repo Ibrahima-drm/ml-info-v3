@@ -643,21 +643,22 @@ def _trigger_background_refresh() -> bool:
         return False
 
 def fetch_all(force: bool = False) -> list[Article]:
-    """Renvoie les articles en cache (ou les récupère si vide).
+    """Renvoie les articles en cache, en stale-while-revalidate par défaut.
 
-    - `force=False` : cache valide < CACHE_DURATION → renvoyé direct ; sinon fetch synchrone.
-    - `force=True`  : stale-while-revalidate. Si on a déjà des articles en cache,
-      on les renvoie immédiatement et on déclenche un refresh en arrière-plan.
-      Si le cache est totalement vide, on fait un fetch synchrone (1re visite).
+    - Cache frais (< CACHE_DURATION) et `force=False` : renvoyé direct.
+    - Cache présent mais stale, OU `force=True` : on renvoie le cache
+      immédiatement et on déclenche un refresh en arrière-plan.
+    - Cache vide (cold start, 1re visite) : fetch synchrone, le caller
+      attend.
     """
     cache_age = time.time() - CACHE["timestamp"]
     has_cache = bool(CACHE["data"])
 
-    if force and has_cache:
-        _trigger_background_refresh()
+    if has_cache and cache_age < CACHE_DURATION and not force:
         return CACHE["data"]
 
-    if not force and cache_age < CACHE_DURATION and has_cache:
+    if has_cache:
+        _trigger_background_refresh()
         return CACHE["data"]
 
     return _do_fetch()
