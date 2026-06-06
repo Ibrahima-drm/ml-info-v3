@@ -925,7 +925,7 @@ async function switchPays(pays) {
         const r = await fetch(`/api/articles?pays=${pays}`);
         const data = await r.json();
         if (!data.articles || data.articles.length === 0) {
-            container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>Aucun article disponible pour ce pays.</div><div style="margin-top:10px;font-size:0.8rem;">Réessaie dans quelques minutes.</div></div>';
+            container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>Aucun article disponible pour ce pays.</div><div style="margin-top:12px"><button class="btn" onclick="switchPays('${pays}')">Réessayer</button></div></div>`;
             return;
         }
         container.innerHTML = data.articles.map(renderArticleCard).join('');

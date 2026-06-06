@@ -938,15 +938,20 @@ _PAYS_LABELS: dict[str, str] = {
 }
 
 
+_MIN_ARTICLES_TO_SHOW = 3  # seuil en dessous duquel un pays n'apparaît pas dans la barre
+
+
 @app.route("/api/countries")
 def api_countries():
-    """Renvoie la liste des pays présents dans le cache avec leur nombre d'articles."""
+    """Renvoie les pays ayant au moins _MIN_ARTICLES_TO_SHOW articles dans le cache.
+    Mali est toujours inclus même s'il passe sous le seuil."""
     from collections import Counter
     articles = fetch_all()
     counts = Counter(a.pays for a in articles if a.pays)
     countries = [
         {"id": pays, "label": _PAYS_LABELS.get(pays, pays), "count": count}
         for pays, count in sorted(counts.items(), key=lambda x: -x[1])
+        if count >= _MIN_ARTICLES_TO_SHOW or pays == "mali"
     ]
     return jsonify({"countries": countries})
 
