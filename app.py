@@ -237,6 +237,181 @@ CATEGORY_ANCHORS: dict[str, set[str]] = {
     "climat_environnement": {"crue du niger", "fleuve niger", "bani"},
 }
 
+PAYS_ANCHORS: dict[str, set[str]] = {
+    "mali": {
+        "mali", "malien", "malienne", "maliens", "maliennes",
+        "bamako", "kidal", "gao", "tombouctou", "mopti", "segou",
+        "sikasso", "kayes", "koulikoro", "taoudeni", "menaka",
+        "azawad", "fama", "forces armees maliennes",
+        "goita", "assimi", "choguel", "edm", "energie du mali",
+        "niono", "douentza", "tessalit", "ansongo", "bourem",
+        "dire", "nioro", "kati",
+    },
+    "senegal": {
+        "senegal", "senegalais", "senegalaise",
+        "dakar", "thies", "saint-louis", "ziguinchor", "kaolack",
+        "touba", "diourbel", "tambacounda", "kolda", "matam",
+        "kedougou", "fatick", "louga", "mbour", "rufisque",
+        "sonko", "faye", "bassirou", "macky sall", "apr", "pastef",
+        "casamance", "mfdc", "senelec", "petrosen",
+    },
+    "cote_ivoire": {
+        "cote d'ivoire", "cote divoire", "ivoirien", "ivoirienne",
+        "abidjan", "yamoussoukro", "bouake", "daloa", "san pedro",
+        "korhogo", "man", "gagnoa",
+        "ouattara", "alassane", "gbagbo", "tidjane",
+        "rhdp", "fpi", "pdci", "bedie", "cie", "petroci",
+        "port d'abidjan",
+    },
+    "burkina": {
+        "burkina", "burkina faso", "burkinabe",
+        "ouagadougou", "bobo-dioulasso", "koudougou",
+        "banfora", "ouahigoua", "tenkodogo", "dori", "fada",
+        "ibrahim traore", "anfb", "aib", "sonabhy",
+        "koglweogo", "vdp", "volontaires pour la defense de la patrie",
+    },
+    "niger": {
+        "niger", "nigerien", "nigerienne",
+        "niamey", "zinder", "maradi", "tahoua",
+        "agadez", "diffa", "dosso", "tillaberi",
+        "tiani", "cnsp", "pnds", "mnsd", "sonidep",
+        "nigelec", "arlit", "azawak",
+    },
+    "guinee": {
+        "guinee", "guineen", "guineenne",
+        "conakry", "kankan", "kindia", "labe",
+        "nzerekore", "mamou", "boke", "faranah",
+        "mamadi doumbouya", "cnrd", "rpg", "ufdg",
+        "cellou dalein", "friguia", "cbg", "simandou",
+    },
+    "togo": {
+        "togo", "togolais", "togolaise",
+        "lome", "sokode", "kpalime", "atakpame",
+        "dapaong", "tsevie", "gnassingbe", "faure",
+        "unir", "arc", "togotelecom", "ceet", "port de lome",
+    },
+    "benin": {
+        "benin", "beninois", "beninoise",
+        "cotonou", "porto-novo", "parakou",
+        "abomey", "natitingou", "bohicon", "kandi",
+        "talon", "patrice talon", "soneb", "sbee",
+        "port de cotonou",
+    },
+    "mauritanie": {
+        "mauritanie", "mauritanien", "mauritanienne",
+        "nouakchott", "nouadhibou", "rosso",
+        "kaedi", "kiffa", "atar", "nema",
+        "ghazouani", "tewfik", "prds", "ufp", "snim",
+        "aziz", "ould",
+    },
+    "gambie": {
+        "gambie", "gambien", "gambienne",
+        "banjul", "serekunda", "kanifing",
+        "barrow", "adama barrow", "grts", "gamtel", "nawec",
+    },
+    "sierra_leone": {
+        "sierra leone", "sierra-leone",
+        "freetown", "kenema", "bo", "makeni",
+        "bio", "julius maada bio", "slpp", "nassit",
+    },
+    "liberia": {
+        "liberia", "liberien", "liberienne",
+        "monrovia", "gbarnga", "buchanan",
+        "weah", "george weah", "cdc", "unity party", "lec",
+    },
+    "ghana": {
+        "ghana", "ghaneen", "ghaneenne",
+        "accra", "kumasi", "tamale", "sekondi",
+        "akufo-addo", "mahama", "ndc", "npp", "gnpc",
+        "ashanti", "tema",
+    },
+    "nigeria": {
+        "nigeria", "nigerian", "nigeriane",
+        "abuja", "lagos", "kano", "ibadan",
+        "port harcourt", "kaduna",
+        "tinubu", "bola tinubu", "nnpc",
+        "boko haram", "iswap",
+    },
+    "cap_vert": {
+        "cap-vert", "cap vert", "capverdien", "capverdienne",
+        "praia", "mindelo", "electra", "tacv", "paicv", "mpd",
+    },
+    "guinee_bissau": {
+        "guinee-bissau", "guinee bissau",
+        "bissau", "bafata", "gabu",
+        "embalo", "umaro", "paigc", "madem", "prs",
+    },
+}
+
+SOURCE_PAYS: dict[str, str] = {
+    # Mali
+    "Studio Tamani":    "mali",
+    "Mali Web":         "mali",
+    "Journal du Mali":  "mali",
+    "Bamada":           "mali",
+    "MaliJet":          "mali",
+    "Mali Actu":        "mali",
+    "22 Septembre":     "mali",
+    "Nord Sud Journal": "mali",
+    "Phileingora":      "mali",
+    "Sahel Intelligence": "mali",
+    # Sahel existants
+    "Wakat Séra":       "burkina",
+    "ActuNiger":        "niger",
+    # Sénégal
+    "Seneweb":          "senegal",
+    "Dakaractu":        "senegal",
+    "SenePlus":         "senegal",
+    "Actusen":          "senegal",
+    # Côte d'Ivoire
+    "Abidjan.net":      "cote_ivoire",
+    "Fratmat":          "cote_ivoire",
+    "Koaci":            "cote_ivoire",
+    # Burkina Faso
+    "Lefaso.net":       "burkina",
+    "Burkina24":        "burkina",
+    "Faso7":            "burkina",
+    # Niger
+    "Tamtaminfo":       "niger",
+    "Niger Express":    "niger",
+    # Guinée
+    "Guineematin":      "guinee",
+    "Mosaiqueguinee":   "guinee",
+    # Togo
+    "Togoweb":          "togo",
+    "Togo Tribune":     "togo",
+    # Bénin
+    "Benin Web TV":     "benin",
+    "La Nation Bénin":  "benin",
+    # Mauritanie
+    "Alakhbar":         "mauritanie",
+    "Cridem":           "mauritanie",
+}
+
+
+def detect_pays(source: str, title: str) -> str:
+    """Retourne le pays (slug) associé à un article, ou '' si aucun match.
+
+    1. Source locale → pays fixe via SOURCE_PAYS.
+    2. Source pan-africaine → on compte les ancres qui matchent dans le
+       titre par pays et on retourne celui qui en a le plus.
+    """
+    if source in SOURCE_PAYS:
+        return SOURCE_PAYS[source]
+
+    title_norm = normalize(title)
+    scores: dict[str, int] = {}
+    for pays, anchors in PAYS_ANCHORS.items():
+        for anchor in anchors:
+            pattern = r"\b" + re.escape(normalize(anchor)) + r"\b"
+            if re.search(pattern, title_norm):
+                scores[pays] = scores.get(pays, 0) + 1
+
+    if not scores:
+        return ""
+    return max(scores, key=lambda p: scores[p])
+
+
 # Set aplati de toutes les ancres acceptables (géo + toutes catégories),
 # normalisé une seule fois au load.
 _ALL_ANCHORS: set[str] = set(MALI_ANCHORS)
