@@ -72,6 +72,34 @@ SOURCES: dict[str, str] = {
     # International (panafricain anglo)
     "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",  # africa.xml retourne 404, all.xml est filtré par keywords
     "Africanews":         "https://fr.africanews.com/feed/rss",
+    # ---- Sénégal ----
+    "Seneweb":          "https://www.seneweb.com/news/rss.php",
+    "Dakaractu":        "https://www.dakaractu.com/feed/",
+    "SenePlus":         "https://www.seneplus.com/rss.xml",
+    "Actusen":          "https://actusen.sn/feed/",
+    # ---- Côte d'Ivoire ----
+    "Abidjan.net":      "https://news.abidjan.net/rss/",
+    "Fratmat":          "https://www.fratmat.info/feed/",
+    "Koaci":            "https://koaci.com/feed/",
+    # ---- Burkina Faso ----
+    "Lefaso.net":       "https://lefaso.net/spip.php?page=backend",
+    "Burkina24":        "https://burkina24.com/feed/",
+    "Faso7":            "https://faso7.com/feed/",
+    # ---- Niger ----
+    "Tamtaminfo":       "https://www.tamtaminfo.com/feed/",
+    "Niger Express":    "https://nigerexpress.info/feed/",
+    # ---- Guinée ----
+    "Guineematin":      "https://guineematin.com/feed/",
+    "Mosaiqueguinee":   "https://mosaiqueguinee.com/feed/",
+    # ---- Togo ----
+    "Togoweb":          "https://www.togoweb.net/feed/",
+    "Togo Tribune":     "https://togotribune.com/feed/",
+    # ---- Bénin ----
+    "Benin Web TV":     "https://beninwebtv.com/feed/",
+    "La Nation Bénin":  "https://www.lanation.bj/feed/",
+    # ---- Mauritanie ----
+    "Alakhbar":         "https://alakhbar.info/feed/",
+    "Cridem":           "https://www.cridem.org/rss/",
 }
 
 # Sources servies en anglais : on traduit titre + description avant
@@ -431,7 +459,7 @@ CATEGORY_PRIORITY: list[str] = [
 CACHE: dict = {"data": [], "timestamp": 0.0}
 CACHE_DURATION = 180
 MAX_AGE_DAYS = 7
-MAX_ARTICLES = 80
+MAX_ARTICLES = 200
 REQUEST_TIMEOUT = 8
 USER_AGENT = "Mozilla/5.0 (compatible; ML-Info/3.0; +https://ml-info.onrender.com)"
 
@@ -748,7 +776,7 @@ def _do_fetch() -> list[Article]:
     with _LAST_FETCH_DIAG_LOCK:
         _LAST_FETCH_DIAG.clear()
 
-    with ThreadPoolExecutor(max_workers=20) as pool:
+    with ThreadPoolExecutor(max_workers=25) as pool:
         futures = {
             pool.submit(parse_one_feed, name, url): name
             for name, url in SOURCES.items()
