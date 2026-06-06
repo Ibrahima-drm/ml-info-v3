@@ -594,7 +594,7 @@ def _parse_date_fallback(raw: str, link: str) -> datetime:
 def parse_one_feed(source: str, url: str) -> list[Article]:
     out: list[Article] = []
     t0 = time.time()
-    diag: dict = {"raw": 0, "low_score": 0, "too_old": 0, "no_title": 0, "error": None}
+    diag: dict = {"raw": 0, "low_score": 0, "no_pays": 0, "too_old": 0, "no_title": 0, "error": None}
     try:
         flux = feedparser.parse(
             url,
@@ -610,6 +610,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
         cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
 
         is_en_source = source in SOURCES_EN
+        is_local_source = source in SOURCE_PAYS
         for entry in flux.entries[:80]:
             title = getattr(entry, "title", "").strip()
             if not title:
@@ -628,13 +629,12 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
             pays = detect_pays(source, title)
 
             if not pays:
-                diag["low_score"] += 1
+                diag["no_pays"] += 1
                 continue
 
             # Local sources (Seneweb, Lefaso.net, etc.) are kept even with
             # score=0 — source attribution is enough. Pan-African sources
             # (RFI, France 24, etc.) require score >= 4 to filter noise.
-            is_local_source = source in SOURCE_PAYS
             if not is_local_source and score < 4:
                 diag["low_score"] += 1
                 continue

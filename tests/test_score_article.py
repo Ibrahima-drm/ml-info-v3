@@ -1,5 +1,5 @@
-"""Tests du scoring d'articles : on vérifie le filtre Mali strict
-(MALI_ANCHORS) et le choix de catégorie par poids dominant."""
+"""Tests du scoring d'articles : anchor-check Afrique de l'Ouest
+(_ALL_ANCHORS) et choix de catégorie par poids dominant."""
 
 import pytest
 
