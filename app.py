@@ -662,8 +662,9 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
 
             # Local sources (Seneweb, Lefaso.net, etc.) are kept even with
             # score=0 — source attribution is enough. Pan-African sources
-            # (RFI, France 24, etc.) require score >= 4 to filter noise.
-            if not is_local_source and score < 4:
+            # (RFI, France 24, etc.) require score >= 2 : on a déjà validé
+            # le pays via l'ancre dans le titre, donc un seul mot-clé suffit.
+            if not is_local_source and score < 2:
                 diag["low_score"] += 1
                 continue
 
