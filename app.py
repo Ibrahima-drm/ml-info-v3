@@ -256,7 +256,7 @@ PAYS_ANCHORS: dict[str, set[str]] = {
         "casamance", "mfdc", "senelec", "petrosen",
     },
     "cote_ivoire": {
-        "cote d'ivoire", "cote divoire", "ivoirien", "ivoirienne",
+        "cote d'ivoire", "ivoirien", "ivoirienne",
         "abidjan", "yamoussoukro", "bouake", "daloa", "san pedro",
         "korhogo", "man", "gagnoa",
         "ouattara", "alassane", "gbagbo", "tidjane",
@@ -266,7 +266,7 @@ PAYS_ANCHORS: dict[str, set[str]] = {
     "burkina": {
         "burkina", "burkina faso", "burkinabe",
         "ouagadougou", "bobo-dioulasso", "koudougou",
-        "banfora", "ouahigoua", "tenkodogo", "dori", "fada",
+        "banfora", "ouahigouya", "tenkodogo", "dori", "fada",
         "ibrahim traore", "anfb", "aib", "sonabhy",
         "koglweogo", "vdp", "volontaires pour la defense de la patrie",
     },
@@ -312,7 +312,7 @@ PAYS_ANCHORS: dict[str, set[str]] = {
     "sierra_leone": {
         "sierra leone", "sierra-leone",
         "freetown", "kenema", "bo", "makeni",
-        "bio", "julius maada bio", "slpp", "nassit",
+        "julius maada bio", "slpp", "nassit",
     },
     "liberia": {
         "liberia", "liberien", "liberienne",
@@ -401,10 +401,9 @@ def detect_pays(source: str, title: str) -> str:
 
     title_norm = normalize(title)
     scores: dict[str, int] = {}
-    for pays, anchors in PAYS_ANCHORS.items():
-        for anchor in anchors:
-            pattern = r"\b" + re.escape(normalize(anchor)) + r"\b"
-            if re.search(pattern, title_norm):
+    for pays, patterns in _PAYS_PATTERNS.items():
+        for pat in patterns:
+            if pat.search(title_norm):
                 scores[pays] = scores.get(pays, 0) + 1
 
     if not scores:
@@ -494,6 +493,12 @@ def normalize(s: str) -> str:
     for a, b in accents:
         s = s.replace(a, b)
     return s
+
+# Precomputed at module load to avoid recompiling patterns on every call.
+_PAYS_PATTERNS: dict[str, list] = {
+    pays: [re.compile(r"\b" + re.escape(normalize(a)) + r"\b") for a in anchors]
+    for pays, anchors in PAYS_ANCHORS.items()
+}
 
 def score_article(title: str, desc: str) -> tuple[int, str, int]:
     """Renvoie (score_total, catégorie_dominante, score_catégorie_dominante).
