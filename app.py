@@ -45,61 +45,56 @@ SOURCES: dict[str, str] = {
     "France 24 Afrique":  "https://www.france24.com/fr/afrique/rss",
     "Le Monde Afrique":   "https://www.lemonde.fr/afrique/rss_full.xml",
     "Le Monde Sahel":     "https://www.lemonde.fr/sahel/rss_full.xml",
-    "Jeune Afrique":      "https://www.jeuneafrique.com/feed/",  # /rss/afrique/ retournait 404
+    "Jeune Afrique":      "https://www.jeuneafrique.com/feed/",
     "BBC Afrique":        "https://www.bbc.com/afrique/index.xml",
     # Maliens
     "Studio Tamani":      "https://www.studiotamani.org/feed/",
-    "Mali Web":           "https://www.maliweb.net/feed/",        # FIXME feed sert du HTML, à retravailler (scrape ou RSSHub)
     "Journal du Mali":    "https://www.journaldumali.com/feed/",
     "Bamada":             "https://bamada.net/feed",
-    "MaliJet":            "https://malijet.com/feed",             # FIXME idem Mali Web : HTML servi à la place du RSS
     "Mali Actu":          "https://maliactu.net/feed/",
-    "22 Septembre":       "https://www.22septembre.com/feed/",    # FIXME DNS ne résout pas (Errno -2)
-    "Nord Sud Journal":   "https://nordsudjournal.com/feed/",     # FIXME Errno 101 Network unreachable
-    "Phileingora":        "https://phileingora.com/feed/",        # FIXME DNS ne résout pas
-    # L'Essor (lessormali.com) retiré : serveur injoignable depuis Render.
-    # Régionaux / Sahel (transfrontalier AES)
+    # FIXME Mali Web / MaliJet : servent du HTML (scrape ou RSSHub nécessaire)
+    # FIXME 22 Septembre / Phileingora : DNS mort
+    # FIXME Nord Sud Journal : timeout 32s, retiré pour ne pas bloquer le fetch
+    # Régionaux / Sahel
     "Sahel Intelligence": "https://sahel-intelligence.com/feed/",
     "Wakat Séra":         "https://www.wakatsera.com/feed/",
-    "ActuNiger":          "https://www.actuniger.com/feed/",      # FIXME feedburner brisé (titres sans nom de feed)
+    "ActuNiger":          "http://www.actuniger.com/feed/",       # http (SSL expiré sur https)
     "Crisis Group":       "https://www.crisisgroup.org/rss",
     # Agences internationales
-    "VOA Afrique":        "https://www.voaafrique.com/api/epiqq",  # ancienne URL "zmgqoe$omv" était 404
-    "DW Afrique":         "https://rss.dw.com/rdf/rss-fr-afri",   # FIXME "no feed by that name", DW a renommé tous ses flux
-    "TV5 Monde Afrique":  "https://information.tv5monde.com/rss.xml",  # global (afrique-only retourne 404), keywords filtrent
-    "APA News":           "https://apanews.net/feed/",            # FIXME bloqué par Cloudflare (challenge anti-bot)
+    "VOA Afrique":        "https://www.voaafrique.com/api/epiqq",
+    "TV5 Monde Afrique":  "https://information.tv5monde.com/rss.xml",
     "Anadolu Afrique":    "https://www.aa.com.tr/fr/rss/default?cat=afrique",
+    # FIXME DW Afrique : DW a renommé ses flux RSS
+    # FIXME APA News : bloqué par Cloudflare
     # International (panafricain anglo)
-    "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",  # africa.xml retourne 404, all.xml est filtré par keywords
+    "Al Jazeera Africa":  "https://www.aljazeera.com/xml/rss/all.xml",
     "Africanews":         "https://fr.africanews.com/feed/rss",
     # ---- Sénégal ----
-    "Seneweb":          "https://www.seneweb.com/news/rss.php",
-    "Dakaractu":        "https://www.dakaractu.com/feed/",
-    "SenePlus":         "https://www.seneplus.com/rss.xml",
-    "Actusen":          "https://actusen.sn/feed/",
+    "SenePlus":             "https://www.seneplus.com/rss.xml",
+    "Actusen":              "https://actusen.sn/feed/",
+    # FIXME Seneweb / Dakaractu / RFM / Emedia : HTML ou XML malformé
     # ---- Côte d'Ivoire ----
-    "Abidjan.net":      "https://news.abidjan.net/rss/",
-    "Fratmat":          "https://www.fratmat.info/feed/",
-    "Koaci":            "https://koaci.com/feed/",
+    "Connectionivoirienne": "https://www.connectionivoirienne.net/feed/",
+    # FIXME Abidjan.net timeout ; Fratmat/Koaci/Linfodrome/RTI : XML malformé
     # ---- Burkina Faso ----
-    "Lefaso.net":       "https://lefaso.net/spip.php?page=backend",
-    "Burkina24":        "https://burkina24.com/feed/",
-    "Faso7":            "https://faso7.com/feed/",
+    "Lefaso.net":           "https://lefaso.net/spip.php?page=backend",
+    "Burkina24":            "https://burkina24.com/feed/",
+    "Faso7":                "https://faso7.com/feed/",
     # ---- Niger ----
-    "Tamtaminfo":       "https://www.tamtaminfo.com/feed/",
-    "Niger Express":    "https://nigerexpress.info/feed/",
+    "Tamtaminfo":           "https://www.tamtaminfo.com/feed/",
+    # FIXME ActuNiger : SSL expiré (http aussi redirige vers https) ; Niger Express : DNS mort ; Nigerdiaspora : XML malformé
     # ---- Guinée ----
-    "Guineematin":      "https://guineematin.com/feed/",
-    "Mosaiqueguinee":   "https://mosaiqueguinee.com/feed/",
+    "Guineematin":          "https://guineematin.com/feed/",
+    "Mosaiqueguinee":       "https://mosaiqueguinee.com/feed/",
     # ---- Togo ----
-    "Togoweb":          "https://www.togoweb.net/feed/",
-    "Togo Tribune":     "https://togotribune.com/feed/",
+    "Togoweb":              "https://www.togoweb.net/feed/",
+    # FIXME Togo Tribune : timeout ; Republicoftogo : XML malformé
     # ---- Bénin ----
-    "Benin Web TV":     "https://beninwebtv.com/feed/",
-    "La Nation Bénin":  "https://www.lanation.bj/feed/",
+    "Benin Web TV":         "https://beninwebtv.com/feed/",
+    # FIXME La Nation Bénin / 24h au Bénin : XML malformé
     # ---- Mauritanie ----
-    "Alakhbar":         "https://alakhbar.info/feed/",
-    "Cridem":           "https://www.cridem.org/rss/",
+    # FIXME Alakhbar / Cridem : HTML ; Mauriweb : XML malformé ; ANI : XML malformé
+    # Mauritanie couverte uniquement par les sources pan-africaines (RFI, BBC, etc.)
 }
 
 # Sources servies en anglais : on traduit titre + description avant
@@ -387,33 +382,23 @@ SOURCE_PAYS: dict[str, str] = {
     "Wakat Séra":       "burkina",
     "ActuNiger":        "niger",
     # Sénégal
-    "Seneweb":          "senegal",
-    "Dakaractu":        "senegal",
-    "SenePlus":         "senegal",
-    "Actusen":          "senegal",
+    "SenePlus":               "senegal",
+    "Actusen":                "senegal",
     # Côte d'Ivoire
-    "Abidjan.net":      "cote_ivoire",
-    "Fratmat":          "cote_ivoire",
-    "Koaci":            "cote_ivoire",
+    "Connectionivoirienne":   "cote_ivoire",
     # Burkina Faso
-    "Lefaso.net":       "burkina",
-    "Burkina24":        "burkina",
-    "Faso7":            "burkina",
+    "Lefaso.net":             "burkina",
+    "Burkina24":              "burkina",
+    "Faso7":                  "burkina",
     # Niger
-    "Tamtaminfo":       "niger",
-    "Niger Express":    "niger",
+    "Tamtaminfo":             "niger",
     # Guinée
-    "Guineematin":      "guinee",
-    "Mosaiqueguinee":   "guinee",
+    "Guineematin":            "guinee",
+    "Mosaiqueguinee":         "guinee",
     # Togo
-    "Togoweb":          "togo",
-    "Togo Tribune":     "togo",
+    "Togoweb":                "togo",
     # Bénin
-    "Benin Web TV":     "benin",
-    "La Nation Bénin":  "benin",
-    # Mauritanie
-    "Alakhbar":         "mauritanie",
-    "Cridem":           "mauritanie",
+    "Benin Web TV":           "benin",
 }
 
 
