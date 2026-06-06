@@ -178,6 +178,48 @@ header {
     font-weight: 600;
 }
 
+/* ========================== SÉLECTEUR PAYS ========================== */
+.pays-bar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 0 0;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.pays-bar::-webkit-scrollbar { display: none; }
+
+.pays-chip {
+    flex-shrink: 0;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.pays-chip:active { transform: scale(0.95); }
+.pays-chip.active {
+    background: #1e40af;
+    border-color: #3b82f6;
+    color: #bfdbfe;
+    font-weight: 600;
+}
+.pays-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border-radius: 999px;
+    padding: 0 5px;
+    font-size: 0.68rem;
+    margin-left: 3px;
+    font-weight: 600;
+}
+
 /* ========================== PULL TO REFRESH ========================== */
 .ptr {
     text-align: center;
@@ -434,6 +476,9 @@ header {
         </div>
     </div>
 
+    <div class="pays-bar" id="paysBar">
+        <button class="pays-chip active" data-pays="mali">Mali</button>
+    </div>
 </header>
 
 <div class="ptr" id="ptr">Tirer pour rafraîchir…</div>
@@ -688,8 +733,8 @@ document.addEventListener('touchend', () => {
     if (ptr.classList.contains('active')) {
         ptr.classList.add('loading');
         ptr.textContent = 'Mise à jour…';
-        fetch('/api/articles?refresh=1')
-            .then(() => location.reload())
+        fetch(`/api/articles?refresh=1&pays=${currentPays}`)
+            .then(() => switchPays(currentPays))
             .catch(() => {
                 ptr.classList.remove('loading', 'active');
                 toast('Échec — connexion ?');
@@ -795,6 +840,124 @@ function urlBase64ToUint8Array(b64) {
         }
     });
 })();
+
+// ============================================================
+// Sélecteur de pays
+// ============================================================
+const PAYS_LABELS = {
+    mali: 'Mali', senegal: 'Sénégal', cote_ivoire: "Côte d'Ivoire",
+    burkina: 'Burkina Faso', niger: 'Niger', guinee: 'Guinée',
+    togo: 'Togo', benin: 'Bénin', mauritanie: 'Mauritanie',
+    gambie: 'Gambie', sierra_leone: 'Sierra Leone', liberia: 'Liberia',
+    ghana: 'Ghana', nigeria: 'Nigeria', cap_vert: 'Cap-Vert',
+    guinee_bissau: 'Guinée-Bissau',
+};
+
+let currentPays = localStorage.getItem('mlinfo_pays') || 'mali';
+
+function renderArticleCard(a) {
+    const dateRel = relativeDate(a.date_iso);
+    const catBadge = a.categorie
+        ? `<span class="cat-badge cat-${a.categorie}">${a.categorie}</span>`
+        : '';
+    const titre = a.titre.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return `<article class="card"
+    data-link="${a.lien}"
+    data-cat="${a.categorie || ''}"
+    data-source="${a.source}"
+    data-iso="${a.date_iso}"
+    data-title="${titre}">
+    <div class="card-meta">
+        <div>
+            <span class="source-tag">${a.source}</span>
+            ${catBadge}
+        </div>
+        <span class="date-rel" data-iso="${a.date_iso}">${dateRel}</span>
+    </div>
+    <h2 class="card-title">${a.titre}</h2>
+    <div class="summary-wrap">
+        <div class="summary collapsed">
+            <div class="skeleton"></div>
+            <div class="skeleton"></div>
+            <div class="skeleton"></div>
+        </div>
+        <div class="summary-source"></div>
+    </div>
+    <div class="card-actions">
+        <button class="btn summary-toggle" style="display:none">Voir plus</button>
+        <a class="btn" href="${a.lien}" target="_blank" rel="noopener">Source ↗</a>
+        <button class="btn-icon share-btn" title="Partager" aria-label="Partager">⇪</button>
+    </div>
+</article>`;
+}
+
+function attachCardListeners(container) {
+    container.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+            e.stopPropagation();
+            const card = btn.closest('.card');
+            const shareData = {
+                title: card.dataset.title,
+                text: card.dataset.title + ' — ' + card.dataset.source,
+                url: card.dataset.link,
+            };
+            try {
+                if (navigator.share) await navigator.share(shareData);
+                else { await navigator.clipboard.writeText(shareData.url); toast('Lien copié'); }
+            } catch(err) { if (err.name !== 'AbortError') console.warn(err); }
+        });
+    });
+    container.querySelectorAll('.card').forEach(card => io.observe(card));
+}
+
+async function switchPays(pays) {
+    currentPays = pays;
+    localStorage.setItem('mlinfo_pays', pays);
+
+    document.querySelectorAll('.pays-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.pays === pays);
+    });
+
+    const container = document.getElementById('container');
+    container.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div>Chargement…</div></div>';
+
+    try {
+        const r = await fetch(`/api/articles?pays=${pays}`);
+        const data = await r.json();
+        if (!data.articles || data.articles.length === 0) {
+            container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>Aucun article disponible pour ce pays.</div><div style="margin-top:10px;font-size:0.8rem;">Réessaie dans quelques minutes.</div></div>';
+            return;
+        }
+        container.innerHTML = data.articles.map(renderArticleCard).join('');
+        attachCardListeners(container);
+        refreshDates();
+    } catch(err) {
+        console.error('switchPays failed', err);
+        toast('Erreur de chargement');
+    }
+}
+
+async function loadPaysBar() {
+    try {
+        const r = await fetch('/api/countries');
+        const { countries } = await r.json();
+        const bar = document.getElementById('paysBar');
+        bar.innerHTML = countries.map(c => {
+            const isActive = c.id === currentPays;
+            return `<button class="pays-chip${isActive ? ' active' : ''}" data-pays="${c.id}">${c.label}<span class="pays-badge">${c.count}</span></button>`;
+        }).join('');
+        bar.querySelectorAll('.pays-chip').forEach(chip => {
+            chip.addEventListener('click', () => switchPays(chip.dataset.pays));
+        });
+        if (currentPays !== 'mali') {
+            switchPays(currentPays);
+        }
+    } catch(err) {
+        console.warn('Impossible de charger la barre pays:', err);
+    }
+}
+
+loadPaysBar();
 </script>
 
 </body>
