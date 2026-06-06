@@ -61,3 +61,16 @@ class TestMultiPays:
     def test_pays_avec_un_seul_match_detecte(self):
         result = detect_pays("France 24 Afrique", "Lomé accueille la médiation")
         assert result == "togo"
+
+
+class TestArticlePays:
+    def test_article_has_pays_field(self):
+        from app import Article
+        a = Article(
+            source="Test", titre="Titre", lien="http://x", description="",
+            date_iso="2026-01-01T00:00:00+00:00",
+            date_affichee="01/01/2026 • 00:00",
+            timestamp=0.0, categorie="", score=0, cat_score=0,
+        )
+        assert hasattr(a, "pays")
+        assert a.pays == ""

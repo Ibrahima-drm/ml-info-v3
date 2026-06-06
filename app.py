@@ -411,9 +411,12 @@ def detect_pays(source: str, title: str) -> str:
     return max(scores, key=lambda p: scores[p])
 
 
-# Set aplati de toutes les ancres acceptables (géo + toutes catégories),
-# normalisé une seule fois au load.
-_ALL_ANCHORS: set[str] = set(MALI_ANCHORS)
+# Union of all country anchors (15 countries) + category anchors.
+# Used by score_article() to gate articles: a title must mention at least
+# one West African geographic term to pass.
+_ALL_ANCHORS: set[str] = set()
+for _anchors in PAYS_ANCHORS.values():
+    _ALL_ANCHORS.update(_anchors)
 for _anchors in CATEGORY_ANCHORS.values():
     _ALL_ANCHORS.update(_anchors)
 
@@ -465,6 +468,7 @@ class Article:
     categorie: str
     score: int
     cat_score: int  # score de la catégorie dominante (utilisé par PUSH_THRESHOLDS)
+    pays: str = ""
 
 # ----------------------------------------------------------------------
 # Utilitaires texte
@@ -621,7 +625,17 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
             # s'écrivent pareil en EN. Ça évite de payer Claude pour 95%
             # d'articles qu'on filtrera ensuite.
             score, categorie, cat_score = score_article(title, description)
-            if score < 4:
+            pays = detect_pays(source, title)
+
+            if not pays:
+                diag["low_score"] += 1
+                continue
+
+            # Local sources (Seneweb, Lefaso.net, etc.) are kept even with
+            # score=0 — source attribution is enough. Pan-African sources
+            # (RFI, France 24, etc.) require score >= 4 to filter noise.
+            is_local_source = source in SOURCE_PAYS
+            if not is_local_source and score < 4:
                 diag["low_score"] += 1
                 continue
 
@@ -661,6 +675,7 @@ def parse_one_feed(source: str, url: str) -> list[Article]:
                 categorie=categorie,
                 score=score,
                 cat_score=cat_score,
+                pays=pays,
             ))
     except Exception as e:
         log.exception("Erreur sur %s : %s", source, e)

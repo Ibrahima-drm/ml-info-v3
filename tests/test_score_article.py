@@ -11,12 +11,10 @@ from app import score_article
 # ----------------------------------------------------------------------
 
 class TestMaliAnchorRequired:
-    def test_no_anchor_returns_zero(self):
-        # "Burkina Faso / Ouagadougou" sans aucun terme Mali ni ancre catégorie
-        # → article rejeté.
+    def test_non_west_african_title_scores_zero(self):
         score, cat, cat_score = score_article(
-            "Attaque au Burkina Faso",
-            "Une attaque a frappé hier soir."
+            "Accord commercial États-Unis — Union Européenne",
+            "Washington et Bruxelles finalisent un traité tarifaire majeur."
         )
         assert score == 0
         assert cat == ""
@@ -36,12 +34,13 @@ class TestMaliAnchorRequired:
         )
         assert score > 0
 
-    def test_mali_anchor_in_description_passes(self):
+    def test_anchor_in_description_only_scores_zero(self):
+        # Since e3478f7, the anchor must appear in the TITLE, not just the description.
         score, cat, _ = score_article(
             "Nouvelle attaque dans le Sahel",
             "L'événement s'est produit au Mali, près de Mopti."
         )
-        assert score > 0
+        assert score == 0
 
     def test_bamako_anchor_passes(self):
         score, cat, _ = score_article("Manifestation à Bamako", "Des milliers de personnes")
@@ -51,11 +50,9 @@ class TestMaliAnchorRequired:
         score, cat, _ = score_article("Communiqué des FAMa", "Les forces ont riposté.")
         assert score > 0
 
-    def test_category_anchor_alone_is_enough(self):
-        # "Aigles du Mali" est une ancre catégorie sport (matche aussi "mali"
-        # dans la sous-chaîne, mais on teste un cas où l'ancre cat compte).
+    def test_mali_in_title_with_keyword_passes(self):
         score, cat, _ = score_article(
-            "Femafoot annonce le calendrier",
+            "Femafoot : la fédération malienne annonce le calendrier",
             "La fédération malienne de football a publié le programme."
         )
         assert score > 0
