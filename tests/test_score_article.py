@@ -101,11 +101,9 @@ class TestCategorisation:
         assert cat == "politique"
 
     def test_economy_dominant(self):
-        # Une seule ancre Mali (regions=5) mais plusieurs mots économie
-        # (orpaillage 3 + franc cfa 3 + inflation 2 = 8) → economie l'emporte.
         score, cat, _ = score_article(
-            "Crise économique : orpaillage et franc CFA en chute",
-            "Au Mali, l'inflation grimpe et l'orpaillage clandestin progresse."
+            "Crise économique au Mali : orpaillage et franc CFA en chute",
+            "L'inflation grimpe et l'orpaillage clandestin progresse."
         )
         assert cat == "economie"
 
