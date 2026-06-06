@@ -906,12 +906,49 @@ def home():
 @app.route("/api/articles")
 def api_articles():
     force = request.args.get("refresh") == "1"
+    pays_filter = request.args.get("pays", "mali")
     articles = fetch_all(force=force)
+    if pays_filter != "all":
+        articles = [a for a in articles if a.pays == pays_filter]
     return jsonify({
         "count": len(articles),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "articles": [asdict(a) for a in articles],
     })
+
+
+_PAYS_LABELS: dict[str, str] = {
+    "mali":          "Mali",
+    "senegal":       "Sénégal",
+    "cote_ivoire":   "Côte d'Ivoire",
+    "burkina":       "Burkina Faso",
+    "niger":         "Niger",
+    "guinee":        "Guinée",
+    "togo":          "Togo",
+    "benin":         "Bénin",
+    "mauritanie":    "Mauritanie",
+    "gambie":        "Gambie",
+    "sierra_leone":  "Sierra Leone",
+    "liberia":       "Liberia",
+    "ghana":         "Ghana",
+    "nigeria":       "Nigeria",
+    "cap_vert":      "Cap-Vert",
+    "guinee_bissau": "Guinée-Bissau",
+}
+
+
+@app.route("/api/countries")
+def api_countries():
+    """Renvoie la liste des pays présents dans le cache avec leur nombre d'articles."""
+    from collections import Counter
+    articles = fetch_all()
+    counts = Counter(a.pays for a in articles if a.pays)
+    countries = [
+        {"id": pays, "label": _PAYS_LABELS.get(pays, pays), "count": count}
+        for pays, count in sorted(counts.items(), key=lambda x: -x[1])
+    ]
+    return jsonify({"countries": countries})
+
 
 @app.route("/api/summary")
 def api_summary():
