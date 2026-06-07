@@ -1,33 +1,28 @@
 """Tests de la fonction detect_pays() et de la config associée."""
 import pytest
-from app import detect_pays, SOURCE_PAYS, PAYS_ANCHORS
+from app import detect_pays, SOURCE_PAYS, PAYS_ANCHORS, SOURCES
 
 
 class TestSourceLocale:
     def test_mali_actu_tagged_mali(self):
         assert detect_pays("Mali Actu", "Titre quelconque") == "mali"
 
-    def test_seneweb_tagged_senegal(self):
-        assert detect_pays("Seneweb", "N'importe quel titre") == "senegal"
+    def test_seneplus_tagged_senegal(self):
+        assert detect_pays("SenePlus", "N'importe quel titre") == "senegal"
 
     def test_lefaso_tagged_burkina(self):
         assert detect_pays("Lefaso.net", "Actualité du jour") == "burkina"
 
-    def test_source_pays_covers_all_local_sources(self):
-        local_sources = [
-            "Mali Actu", "Studio Tamani", "Bamada", "Journal du Mali",
-            "Seneweb", "Dakaractu", "SenePlus", "Actusen",
-            "Abidjan.net", "Fratmat", "Koaci",
-            "Lefaso.net", "Burkina24", "Faso7",
-            "Tamtaminfo", "Niger Express",
-            "Guineematin", "Mosaiqueguinee",
-            "Togoweb", "Togo Tribune",
-            "Benin Web TV", "La Nation Bénin",
-            "Alakhbar", "Cridem",
-            "Wakat Séra", "ActuNiger",
-        ]
-        for src in local_sources:
-            assert src in SOURCE_PAYS, f"{src!r} absent de SOURCE_PAYS"
+    def test_source_pays_entries_are_active_sources(self):
+        # Toute source taguée doit exister dans SOURCES (pas de mapping orphelin
+        # laissé derrière quand on retire une source cassée).
+        for src in SOURCE_PAYS:
+            assert src in SOURCES, f"{src!r} dans SOURCE_PAYS mais absent de SOURCES"
+
+    def test_source_pays_values_are_valid_countries(self):
+        # Tout pays cible doit avoir un jeu d'ancres défini.
+        for src, pays in SOURCE_PAYS.items():
+            assert pays in PAYS_ANCHORS, f"{src!r} pointe vers un pays inconnu {pays!r}"
 
 
 class TestDetectionParAncres:

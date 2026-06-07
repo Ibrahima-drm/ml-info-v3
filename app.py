@@ -58,7 +58,7 @@ SOURCES: dict[str, str] = {
     # Régionaux / Sahel
     "Sahel Intelligence": "https://sahel-intelligence.com/feed/",
     "Wakat Séra":         "https://www.wakatsera.com/feed/",
-    "ActuNiger":          "http://www.actuniger.com/feed/",       # http (SSL expiré sur https)
+    # FIXME ActuNiger : SSL expiré (http redirige vers https aussi)
     "Crisis Group":       "https://www.crisisgroup.org/rss",
     # Agences internationales
     "VOA Afrique":        "https://www.voaafrique.com/api/epiqq",
@@ -369,18 +369,12 @@ PAYS_ANCHORS: dict[str, set[str]] = {
 SOURCE_PAYS: dict[str, str] = {
     # Mali
     "Studio Tamani":    "mali",
-    "Mali Web":         "mali",
     "Journal du Mali":  "mali",
     "Bamada":           "mali",
-    "MaliJet":          "mali",
     "Mali Actu":        "mali",
-    "22 Septembre":     "mali",
-    "Nord Sud Journal": "mali",
-    "Phileingora":      "mali",
     "Sahel Intelligence": "mali",
     # Sahel existants
     "Wakat Séra":       "burkina",
-    "ActuNiger":        "niger",
     # Sénégal
     "SenePlus":               "senegal",
     "Actusen":                "senegal",
